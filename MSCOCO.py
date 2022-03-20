@@ -28,7 +28,6 @@ class COCO:
         # a dictionary
         data = json.load(captions_json)
         data = data['annotations']
-        
         return data
     
     
