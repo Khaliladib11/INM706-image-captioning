@@ -2,6 +2,7 @@ import os
 import json
 from PIL import Image
 from pathlib import Path
+from collections import deque
 
 class COCO:
     
@@ -70,4 +71,20 @@ class COCO:
         captions = self.imgs_caps_dict[file_name]
         
         return captions
+    
+    '''
+    method to convert imgs_caps_dict to list
+    the porpuse of this method is to create a list to use it when we want to create a vocabulary
+    we will use deque object instead of list object, the reason why is because deque has O(1) for adding and removing objects from it
+    while list will take a very long time add all the captions to it 
+    in small datasets we can use list it won't be any problem, however with this dataset, my computer crached while trying to do that :)
+    Stay safe and protect your machines
+    '''
+    def captions_to_list(self):
+        captions_deque = deque()
+        for img_file_name in self.imgs_caps_dict:
+            for cap in self.imgs_caps_dict[img_file_name]:
+                captions_deque.append(cap)
+                
+        return captions_deque
         
