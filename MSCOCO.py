@@ -1,19 +1,23 @@
 import os
 import json
 from PIL import Image
+from pathlib import Path
 
 class COCO:
     
     # constructor
-    def __init__(self, imgs, captions_path):
+    def __init__(self, imgs_path, captions_path):
         """
         Constructor of Microsoft COCO helper class for reading and visualizing annotations.
-        :param imgs (path): sorted list of image file names
+        :param imgs_path (path): path of imgs 
         :param captions_path (path): path of captions file
         :return:
         """
-        self.imgs = imgs
+        self.imgs_path = imgs_path
         self.captions_path = captions_path
+        
+        
+        self.imgs = [img.name for img in Path(self.imgs_path).iterdir()]
         
         self.captions = self._load_captions()
         self.imgs_caps_dict = self._create_caption_dict()
@@ -46,8 +50,8 @@ class COCO:
         for cap in self.captions:
             # the naming convention used in MS COCO is that each file name consists of 12 characters
             # zfill method pad the name with 0s to the left until we get 12 chars
-            img_file_name = self.imgs[0].parent / (str(cap['image_id']).zfill(12) + '.jpg')
-            
+            #img_file_name = self.imgs[0].parent / (str(cap['image_id']).zfill(12) + '.jpg')
+            img_file_name = str(cap['image_id']).zfill(12) + '.jpg'
             # there are some imgs with more than 5 captions
             # just make sure all images are on the same ground with the same number of captions
             if len(imgs_dict[img_file_name]) < 5:
