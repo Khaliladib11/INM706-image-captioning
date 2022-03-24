@@ -1,6 +1,7 @@
 import re
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
+from collections import Counter
 
 class Vocabulary:
 
@@ -11,18 +12,14 @@ class Vocabulary:
         :param freq_threshold (int): if a word is not repeated enough don't add it to the dictionary
         :param sequence_length (int): all sequences must be the same lenght, so this param is used to pad or cut from sentence
         """
-        self.idx_to_string = {
-            0: '<PAD>',  # to pad all the captions to be the same size
-            1: '<SOS>',  # Start of sentence
-            2: '<EOS>',  # End of sentence
-            3: '<UNK>',  # Unknown Token
-        }
-        self.string_to_index = {
-            '<PAD>': 0,
-            '<SOS>': 1,
-            '<EOS>': 2,
-            '<UNK>': 3,
-        }
+        self.special_tokens = ['<PAD>', # to pad all the captions to be the same size
+                              '<SOS>', # Start of sentence
+                              '<EOS>', # End of sentence
+                              '<UNK>'] # Unknown Token
+        ##### comment: I think we can get rid of these attributes if we use build_vocab2 below, which will set 
+        # the attributes. If you 
+        # self.idx_to_string = dict(zip(range(4), self.special_tokens))
+        # self.string_to_index = dict(zip(self.special_tokens, range(4)))
         self.freq_threshold = freq_threshold
         self.sequence_length = sequence_length
         self.stop_words = stopwords.words('english')  # stop words in english
@@ -58,6 +55,19 @@ class Vocabulary:
                 idx = self.string_to_index[word]
                 self.string_to_index.pop(word)
                 self.idx_to_string.pop(idx)
+                
+    def build_vocab2(self, sentences_list):
+        # create one string with all sentences joined together
+        corpus = " ".join(sentences_list)
+        tokens =  self.tokenizer_eng(corpus)
+        # create counter object with counts of each token
+        freq = Counter(tokens)
+        # remove tokens which occur fewer than threshold
+        vocab = self.special_tokens + list(freq - 
+                                           Counter((self.freq_threshold - 1) 
+                                                   * list(freq)))
+        self.string_to_index = dict(zip(vocab, range(len(vocab))))
+        self.idx_to_string = dict(zip(range(len(vocab)), vocab))
 
     # method to convert words to numerical values
     def numericalize(self, sentence):
