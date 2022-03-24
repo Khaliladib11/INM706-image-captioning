@@ -5,27 +5,34 @@ from nltk.tokenize import word_tokenize
 class Vocabulary:
 
     # Constructor
-    def __init__(self, freq_threshold, sequence_length=6):
+    def __init__(self, freq_threshold, sequence_length=6, idx_to_string=None, string_to_index=None):
         """
         Constructor to create vocabulary of words and to tokenize them.
         :param freq_threshold (int): if a word is not repeated enough don't add it to the dictionary
         :param sequence_length (int): all sequences must be the same lenght, so this param is used to pad or cut from sentence
         """
-        self.idx_to_string = {
-            0: '<PAD>',  # to pad all the captions to be the same size
-            1: '<SOS>',  # Start of sentence
-            2: '<EOS>',  # End of sentence
-            3: '<UNK>',  # Unknown Token
-        }
-        self.string_to_index = {
-            '<PAD>': 0,
-            '<SOS>': 1,
-            '<EOS>': 2,
-            '<UNK>': 3,
-        }
+        if idx_to_string is None or string_to_index is None:
+            self.idx_to_string = {
+                0: '<PAD>',  # to pad all the captions to be the same size
+                1: '<SOS>',  # Start of sentence
+                2: '<EOS>',  # End of sentence
+                3: '<UNK>',  # Unknown Token
+            }
+            self.string_to_index = {
+                '<PAD>': 0,
+                '<SOS>': 1,
+                '<EOS>': 2,
+                '<UNK>': 3,
+            }
+        
+        else:
+            self.idx_to_string = idx_to_string
+            self.string_to_index = string_to_index
+        
         self.freq_threshold = freq_threshold
         self.sequence_length = sequence_length
         self.stop_words = stopwords.words('english')  # stop words in english
+
 
     # return the length of the vocabulary
     def __len__(self):
