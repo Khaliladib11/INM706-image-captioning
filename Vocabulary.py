@@ -42,7 +42,7 @@ class Vocabulary:
     def tokenizer_eng(self, sentence):
         sentence = re.sub('\W+', ' ', sentence.lower())  # Remove all special characters, punctuation and spaces
         tokenized_sentence = word_tokenize(sentence)  # Tokenize the words
-        tokenized_sentence = [w for w in tokenized_sentence if w not in self.stop_words]  # remove stop word
+        #tokenized_sentence = [w for w in tokenized_sentence if w not in self.stop_words]  # remove stop word
 
         return tokenized_sentence
 
