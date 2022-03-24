@@ -83,8 +83,7 @@ class MSCOCOInterface(data.Dataset):
         caps = self.get_captions(img_file_name)
         plt.imshow(img)
         plt.show()
-        for cap in caps:
-            print(cap)
+        print(caps[0])
 
     # return the length of the dataset
     def __len__(self):
@@ -98,4 +97,5 @@ class MSCOCOInterface(data.Dataset):
         # get y: Image Caption
         y = self.get_captions(img_file_name)[0]
         y = self.vocabulary.numericalize(y)
+        y = torch.tensor(y, dtype=torch.int64)
         return idx, X, y
