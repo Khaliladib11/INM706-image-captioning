@@ -12,7 +12,10 @@ class Vocabulary:
         :param freq_threshold (int): if a word is not repeated enough don't add it to the dictionary
         :param sequence_length (int): all sequences must be the same lenght, so this param is used to pad or cut from sentence
         """
-        
+        self.special_tokens = ['<PAD>', # to pad all the captions to be the same size
+                              '<SOS>', # Start of sentence
+                              '<EOS>', # End of sentence
+                              '<UNK>'] # Unknown Token
         
         if idx_to_string is None or string_to_index is None:
             self.idx_to_string = {
