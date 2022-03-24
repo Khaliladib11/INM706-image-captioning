@@ -63,7 +63,7 @@ class COCO:
     
     # method to return an image as Image
     def get_img(self, idx):
-        return Image.open(self.imgs[idx])
+        return Image.open(self.imgs_path/self.imgs[idx])
     
     # method to return captions for a specific file
     def get_captions(self, file_name):
