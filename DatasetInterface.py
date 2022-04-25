@@ -74,6 +74,7 @@ class MSCOCOInterface(data.Dataset):
     # image transforms
     def img_transforms(self, img):
         transformer = transforms.Compose([
+            transforms.Resize((400, 400)),
             transforms.ToTensor(),
             transforms.Normalize(
                 mean=[0.485, 0.456, 0.406],
@@ -86,7 +87,7 @@ class MSCOCOInterface(data.Dataset):
     # load image as Image then transform it to tensor
     def load_img(self, idx):
         img_file_name = self.img_deque[idx][0]
-        img = Image.open(self.imgs_path / img_file_name)
+        img = Image.open(self.imgs_path / img_file_name).convert('RGB')
         img = self.img_transforms(img)
         return img
 
@@ -103,7 +104,7 @@ class MSCOCOInterface(data.Dataset):
 
     # return the length of the dataset
     def __len__(self):
-        return len(self.imgs)
+        return len(self.img_deque)
 
     # get an item from the dataset
     def __getitem__(self, idx):

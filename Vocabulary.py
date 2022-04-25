@@ -88,6 +88,8 @@ class Vocabulary:
     def numericalize(self, sentence):
         tokenized_sentence = self.tokenizer_eng(sentence)  # First tokenize the sentence
         # then convert the words to numerical idxs from our vocab
+        tokenized_sentence.insert(0, '<SOS>')
+        tokenized_sentence.append('<EOS>')
         idx_of_sentence = [self.string_to_index[word] if word in self.string_to_index else self.string_to_index['<UNK>']
                            for word in tokenized_sentence]
 
