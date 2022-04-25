@@ -10,13 +10,13 @@ class Encoder(nn.Module):
     def __init__(self, embed_size, pretrained=True, model_weight_path=None):
         """
         Encoder is the first part to our model.
-        The main porpose of encoder is to extract the usefule feature from an image
+        The main purpose of encoder is to extract the useful feature from an image
         We will use Resnet152 architecture pre-trained on ImageNet dataset
         Parameters
         ----------
         :param embed_size (int): the embed_size will be the output of the encoder since embed_size represents the input of the decoder
-        :param pretrained (bool): if we want to load the pretrained weigth or not
-        :param model_weight_path (sting): path to the pre trained weight
+        :param pretrained (bool): if we want to load the pre-trained weight or not
+        :param model_weight_path (sting): path to the pre-trained weight
         """
         super(Encoder, self).__init__()
         # Load pretrained resnet152 on ImageNet
@@ -26,7 +26,7 @@ class Encoder(nn.Module):
             self.resnet152 = models.resnet152(pretrained=False)
             self.resnet152.load_state_dict(torch.load(model_weight_path))
 
-        # Freeze the parameters of pre trained model
+        # Freeze the parameters of pre-trained model
         for param in self.resnet152.parameters():
             param.requires_grad_(False)
 
@@ -87,8 +87,7 @@ class Decoder(nn.Module):
         outputs = self.linear(hiddens)
         return outputs
 
-
-    # get prediction
+    # get the idxs of the predicted words.
     def get_predict(self, features, max_length):
         idx = []
         inputs = features.unsqueeze(0)

@@ -3,6 +3,7 @@ from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 from collections import Counter
 
+
 class Vocabulary:
 
     # Constructor
@@ -12,11 +13,11 @@ class Vocabulary:
         :param freq_threshold (int): if a word is not repeated enough don't add it to the dictionary
         :param sequence_length (int): all sequences must be the same lenght, so this param is used to pad or cut from sentence
         """
-        self.special_tokens = ['<PAD>', # to pad all the captions to be the same size
-                              '<SOS>', # Start of sentence
-                              '<EOS>', # End of sentence
-                              '<UNK>'] # Unknown Token
-        
+        self.special_tokens = ['<PAD>',  # to pad all the captions to be the same size
+                               '<SOS>',  # Start of sentence
+                               '<EOS>',  # End of sentence
+                               '<UNK>']  # Unknown Token
+
         if idx_to_string is None or string_to_index is None:
             self.idx_to_string = {
                 0: '<PAD>',  # to pad all the captions to be the same size
@@ -30,14 +31,13 @@ class Vocabulary:
                 '<EOS>': 2,
                 '<UNK>': 3,
             }
-        
+
         else:
             self.idx_to_string = idx_to_string
             self.string_to_index = string_to_index
         self.freq_threshold = freq_threshold
         self.sequence_length = sequence_length
         self.stop_words = stopwords.words('english')  # stop words in english
-
 
     # return the length of the vocabulary
     def __len__(self):
@@ -47,11 +47,11 @@ class Vocabulary:
     def tokenizer_eng(self, sentence):
         sentence = re.sub('\W+', ' ', sentence.lower())  # Remove all special characters, punctuation and spaces
         tokenized_sentence = word_tokenize(sentence)  # Tokenize the words
-        #tokenized_sentence = [w for w in tokenized_sentence if w not in self.stop_words]  # remove stop word
+        # tokenized_sentence = [w for w in tokenized_sentence if w not in self.stop_words]  # remove stop word
 
         return tokenized_sentence
 
-    # medthod to build the vocabulary for us
+    # method to build the vocabulary for us
     def build_vocabulary(self, sentences_list):
         frequencies = {}
         idx = len(self.idx_to_string)
@@ -70,16 +70,16 @@ class Vocabulary:
                 idx = self.string_to_index[word]
                 self.string_to_index.pop(word)
                 self.idx_to_string.pop(idx)
-                
+
     def build_vocab2(self, sentences_list):
         # create one string with all sentences joined together
         corpus = " ".join(sentences_list)
-        tokens =  self.tokenizer_eng(corpus)
+        tokens = self.tokenizer_eng(corpus)
         # create counter object with counts of each token
         freq = Counter(tokens)
         # remove tokens which occur fewer than threshold
-        vocab = self.special_tokens + list(freq - 
-                                           Counter((self.freq_threshold - 1) 
+        vocab = self.special_tokens + list(freq -
+                                           Counter((self.freq_threshold - 1)
                                                    * list(freq)))
         self.string_to_index = dict(zip(vocab, range(len(vocab))))
         self.idx_to_string = dict(zip(range(len(vocab)), vocab))
