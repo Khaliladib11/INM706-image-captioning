@@ -27,7 +27,7 @@ class MSCOCOInterface(data.Dataset):
                  stage="train",
                  idx_to_string=None,
                  string_to_index=None,
-                 seed=706):
+                 ):
         """
         Constructor of MS COCO Interface for get imgs and caps as tensors.
         :param imgs_path (Pathlib object): location of img folder
@@ -66,31 +66,19 @@ class MSCOCOInterface(data.Dataset):
 
         self.__create_data_deque()
 
-        # use the same seed because we are selecting image from the deque randomly
-        # we have to make sure that we are selecting the same image every time we reload
-        random.seed(seed)
 
-        # in the training stage we select 15_000 images from the first 70_000 in the deque
-        if stage == "train":
-            self.images = random.sample(list(itertools.islice(self.img_deque, 1, 70_000)), 15_000)
-
-        # in the testing stage we select 5000 images from the image range 70_001=>100_000 in the deque
-        elif stage == "test":
-            self.images = random.sample(list(itertools.islice(self.img_deque, 70_001, 100_000)), 5000)
-
-        # in the validation stage we select 5000 images from the image range 100_001=>115_000 in the deque
-        elif stage == "validation":
-            self.images = random.sample(list(itertools.islice(self.img_deque, 100_001, 115_000)), 5000)
-
-    # method to create the list deque of imgs and captions accordind to the number of caption per image
+    # method to create the list deque of imgs and captions according to the number of caption per image
     def __create_data_deque(self):
         self.img_deque = deque()
         imgs = self.coco.imgs
         for img in imgs:
             counter = 0
             while counter < self.caps_per_img:
-                self.img_deque.append([img, self.get_captions(img)[counter]])
-                counter += 1
+                if len(self.get_captions(img)) > 0:
+                    self.img_deque.append([img, self.get_captions(img)[counter]])
+                    counter += 1
+                else:
+                    break
 
     # method to create vocabulary
     def create_vocabulary(self):
@@ -113,7 +101,7 @@ class MSCOCOInterface(data.Dataset):
 
     # load image as Image then transform it to tensor
     def load_img(self, idx):
-        img_file_name = self.images[idx][0]
+        img_file_name = self.img_deque[idx][0]
         # convert the image to RGB to make sure all the images are 3D, because there are some images in grayscale
         img = Image.open(self.imgs_path / img_file_name).convert('RGB')
         img = self.img_transforms(img)
@@ -124,22 +112,22 @@ class MSCOCOInterface(data.Dataset):
 
     def display_img_with_captions(self, idx):
         # img_file_name = self.img_deque[idx][0]
-        img = Image.open(self.imgs_path / self.images[idx][0])
-        cap = self.images[idx][1]
+        img = Image.open(self.imgs_path / self.img_deque[idx][0])
+        cap = self.img_deque[idx][1]
         plt.imshow(img)
         plt.show()
         #print(cap)
 
     # return the length of the dataset
     def __len__(self):
-        return len(self.images)
+        return len(self.img_deque)
 
     # get an item from the dataset
     def __getitem__(self, idx):
         # get X: Image
         X = self.load_img(idx)
         # get y: Image Caption
-        y = self.images[idx][1]
+        y = self.img_deque[idx][1]
         y = self.vocabulary.numericalize(y)
         y = torch.tensor(y, dtype=torch.int64)
         return idx, X, y
