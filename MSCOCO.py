@@ -11,28 +11,39 @@ class COCO:
     def __init__(self, imgs_path, captions_path):
         """
         Constructor of Microsoft COCO helper class for reading and visualizing annotations.
-        :param imgs_path (path): path of imgs 
+        :param imgs_path (path): path of imgs folder
         :param captions_path (path): path of captions file
         :return:
         """
         self.imgs_path = imgs_path
         self.captions_path = captions_path
+        
+        # load captions json file and put json['captions'] and json['images'] into attributes:
+        self.captions, self.caption_images = self._load_captions()
+        
+        # use images from caption file to define the list of images used in data set
+        self.imgs = self._get_imgs(self.caption_images)
 
-        self.imgs = [img.name for img in Path(self.imgs_path).iterdir()]
-
-        self.captions = self._load_captions()
         self.imgs_caps_dict = self._create_caption_dict()
 
     # Load captions
     def _load_captions(self) -> list:
         # Opening JSON file
-        captions_json = open(self.captions_path)
-
-        # returns JSON object as
-        # a dictionary
-        data = json.load(captions_json)
-        data = data['annotations']
-        return data
+        with open(self.captions_path) as captions_json:
+            # returns JSON object as
+            # a dictionary
+            data = json.load(captions_json)
+        annotations = data['annotations']
+        images = data['images']
+        return annotations, images
+    
+    def _get_imgs(self, images) -> list:
+        imgs = []
+        for d in images:
+            imgs.append(d['file_name'])
+        return imgs
+        # this extracts all the images file names from the captions file to save in a list
+        
 
     # method to create dictionary of captions for each image
     # returns dict with img_file_name as key and captions as data
