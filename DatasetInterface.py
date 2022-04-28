@@ -68,6 +68,8 @@ class MSCOCOInterface(data.Dataset):
 
 
     # method to create the list deque of imgs and captions according to the number of caption per image
+    # this will only create a list of captions for captions in the captions file - it doesn't matter
+    # if more images have been loaded for the COCO dataset
     def __create_data_deque(self):
         self.img_deque = deque()
         imgs = self.coco.imgs
