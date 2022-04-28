@@ -52,7 +52,7 @@ class Vocabulary:
         return tokenized_sentence
 
     # method to build the vocabulary for us
-    def build_vocabulary(self, sentences_list):
+    def build_vocabulary_old(self, sentences_list):
         frequencies = {}
         idx = len(self.idx_to_string)
         for sentence in sentences_list:
@@ -71,7 +71,7 @@ class Vocabulary:
                 self.string_to_index.pop(word)
                 self.idx_to_string.pop(idx)
 
-    def build_vocab2(self, sentences_list):
+    def build_vocabulary(self, sentences_list):
         # create one string with all sentences joined together
         corpus = " ".join(sentences_list)
         tokens = self.tokenizer_eng(corpus)
