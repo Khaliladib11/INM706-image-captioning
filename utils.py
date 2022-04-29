@@ -1,6 +1,8 @@
 from Vocabulary import Vocabulary
 import json
 from pathlib import Path
+import numpy as np
+
 
 def build_vocab(freq_threshold=2, sequence_length=40, captions_file='captions_train2017.json'):
     """build a vocabulary using any captions json file we want.
@@ -28,14 +30,20 @@ def build_vocab(freq_threshold=2, sequence_length=40, captions_file='captions_tr
     anns_path = Path('Datasets/coco/annotations/')
     vocab_path = Path('vocabulary/')
 
-    with open(anns_path/captions_file, 'r') as f:
-        annotations = json.load(f)
+    if isinstance(captions_file, list):
+        annotations = []
+        for file in captions_file:
+            with open(anns_path/file, 'r') as f:
+                annotations.extend(json.load(f)['annotations'])
+    else:
+        with open(anns_path/captions_file, 'r') as f:
+            annotations = json.load(f)['annotations']
 # 
-    print(f"There are {len(annotations['annotations'])} captions in the data set")
+    print(f"There are {len(annotations)} captions in the data set")
     
     vocab = Vocabulary(freq_threshold, sequence_length)
     captions = []
-    for d in annotations['annotations']:
+    for d in annotations:
         captions.append(d['caption'])
     vocab.build_vocabulary(captions)
 
@@ -56,6 +64,8 @@ def prepare_datasets(train_percent = 0.87, super_categories=None,
     
     train_percent, float. between 0 and 1. How to split eligible images between train and val.
     super_categories, list. If None then selects all data
+    
+    possible supercategories are: 
     """
     
     annotations_folder = Path(r'Datasets/coco/annotations')
@@ -168,7 +178,7 @@ def prepare_datasets(train_percent = 0.87, super_categories=None,
             img_list_test.append(d['image_id'])
             annotations_test.append(d)
     img_list_test = list(set(img_list_test))
-    if img_list_test > max_test:
+    if len(img_list_test) > max_test:
         img_list_test = img_list_test[:max_test]
 
     captions_full_test = dict(zip(full_img_list_test, 
@@ -201,3 +211,5 @@ def prepare_datasets(train_percent = 0.87, super_categories=None,
     for key, val in save_files.items():
         with open(annotations_folder/f'{key}.json', 'w') as json_file:
             json.dump(val, json_file)
+            
+    print("train dataset has {} images\n val dataset has {} images\n test dataset has {} images".format(len(imgs_train), len(imgs_val), len(img_list_test)))
