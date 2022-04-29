@@ -30,7 +30,7 @@ def build_vocab(freq_threshold=2, sequence_length=40, captions_file='captions_tr
 
     with open(anns_path/captions_file, 'r') as f:
         annotations = json.load(f)
-
+# 
     print(f"There are {len(annotations['annotations'])} captions in the data set")
     
     vocab = Vocabulary(freq_threshold, sequence_length)
