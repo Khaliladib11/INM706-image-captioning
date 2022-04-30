@@ -2,16 +2,52 @@
 import matplotlib.pyplot as plt
 import itertools
 import json
+from tqdm import tqdm
 
 import torch
 from torch.utils import data
 from torchvision import transforms
+import numpy as np
+import nltk
 
 from MSCOCO import COCO
 from Vocabulary import Vocabulary
 from collections import deque
 from PIL import Image
 from pathlib import Path
+
+def get_loader(imgs_path,
+               captions_path,
+               freq_threshold,
+               # sequence_length,  # might not need this
+               batch_size=1,
+               caps_per_img=1,
+               vocab_from_file=True):
+    """Returns the data loader
+    :param imgs_path (Pathlib object): location of img folder
+    :param captions_path (Pathlib object): location to the caption folder.
+    :param freq_threshold (int): if a word is not repeated enough don't add it to the dictionary
+    :param sequence_length (int): all sequences must be the same length, so this param is used to pad or cut from sentence
+    :param caps_per_img (int): the number of image we want to return for each image
+    :param vocab_from_file (bool): if true then load vocab from json files in vocabulary folder - currently no ability to specify file name
+    """
+    
+    interface = MSCOCOInterface(imgs_path=imgs_path,
+                                captions_path=captions_path,
+                                freq_threshold=freq_threshold,
+                                # sequence_length=sequence_length,  # might not need this
+                                caps_per_img=caps_per_img,
+                                vocab_from_file=vocab_from_file)
+    
+    # following lines create a batch of captions all of same length
+    indices = interface.get_train_indices(batch_size)
+    initial_sampler = data.sampler.SubsetRandomSampler(indices=indices)
+    batch_sampler=data.sampler.BatchSampler(sampler=initial_sampler,
+                                            batch_size=batch_size,
+                                            drop_last=False)
+    data_loader = data.DataLoader(dataset=interface,
+                                  batch_sampler=batch_sampler)
+    return data_loader
 
 
 # Interface Class
@@ -22,11 +58,11 @@ class MSCOCOInterface(data.Dataset):
                  imgs_path,
                  captions_path,
                  freq_threshold,
-                 sequence_length,  # might not need this
+                 # sequence_length,  # might not need this
                  caps_per_img=1,
                  vocab_from_file=True,  # new variable to load from json file
-                 idx_to_string=None,
-                 string_to_index=None,
+                 # idx_to_string=None,
+                 # string_to_index=None,
                  ):
         """
         Constructor of MS COCO Interface for get imgs and caps as tensors.
@@ -38,13 +74,12 @@ class MSCOCOInterface(data.Dataset):
         :param vocab_from_file (bool): if true then load vocab from json files in vocabulary folder - currently no ability to specify file name
         :param idx_to_string (dict): dictionary contains the index to string vocabulary
         :param string_to_index (dict): dictionary contains the string to index vocabulary
-        :param stage (string): parameter to load train, validation or test images
         """
 
         self.captions_path = captions_path
         self.imgs_path = imgs_path
         self.freq_threshold = freq_threshold
-        self.sequence_length = sequence_length
+        # self.sequence_length = sequence_length
         if caps_per_img > 5:
             self.caps_per_img = 5
         elif caps_per_img < 1:
@@ -52,6 +87,7 @@ class MSCOCOInterface(data.Dataset):
         else:
             self.caps_per_img = caps_per_img
 
+        self.rng = np.random.default_rng(42)
         self.coco = COCO(self.imgs_path, self.captions_path)
 
         # create vocab from scratch if it is not already done
@@ -59,14 +95,29 @@ class MSCOCOInterface(data.Dataset):
             p = Path('vocabulary')
             self.string_to_index = json.load(open(p/'string_to_index.json'))
             self.idx_to_string = json.load(open(p/'idx_to_string.json'))
+            self.vocabulary = Vocabulary(self.freq_threshold,
+                                         # self.sequence_length,
+                                         self.idx_to_string,
+                                         self.string_to_index)
             
         else:
-            self.vocabulary = Vocabulary(self.freq_threshold, self.sequence_length, self.idx_to_string,
-                                         self.string_to_index)
-            self.vocabulary = Vocabulary(self.freq_threshold, self.sequence_length)
+            self.vocabulary = Vocabulary(self.freq_threshold, 
+                                         # self.sequence_length
+                                        )
             self.create_vocabulary()
+            
+        print("{}\nVocab size is {}\n{}".format("#"*20,
+                                                len(self.idx_to_string),
+                                                "#"*20))
 
         self.img_deque = self.__create_data_deque()
+        
+        # We need caption length with same index as caption in img_deque
+        # to enable dataloader to load captions with the same length
+        print('\nObtaining caption lengths...')
+        all_tokens = [self.vocabulary.tokenizer_eng(str(self.img_deque[idx][1])) 
+                      for idx in tqdm(range(len(self.img_deque)))]
+        self.caption_lengths = [len(token) for token in all_tokens]
 
     # method to create the list deque of imgs and captions according to the number of caption per image
     # this will only create a list of captions for captions in the captions file - it doesn't matter
@@ -83,6 +134,13 @@ class MSCOCOInterface(data.Dataset):
                 else:
                     break
         return img_deque
+    
+    def get_train_indices(self, batch_size=1):
+        sel_length = self.rng.choice(self.caption_lengths)
+        all_indices = np.where([self.caption_lengths[i] == sel_length 
+                                for i in np.arange(len(self.caption_lengths))])[0]
+        indices = list(np.random.choice(all_indices, size=batch_size))
+        return indices
 
     # method to create vocabulary
     def create_vocabulary(self):

@@ -4,7 +4,9 @@ from pathlib import Path
 import numpy as np
 
 
-def build_vocab(freq_threshold=2, sequence_length=40, captions_file='captions_train2017.json'):
+def build_vocab(freq_threshold=2, 
+                # sequence_length=40,
+                captions_file='captions_train2017.json'):
     """build a vocabulary using any captions json file we want.
     This enables us to build vocab independent of the test set we are loading in for training for examle.
     
@@ -41,7 +43,9 @@ def build_vocab(freq_threshold=2, sequence_length=40, captions_file='captions_tr
 # 
     print(f"There are {len(annotations)} captions in the data set")
     
-    vocab = Vocabulary(freq_threshold, sequence_length)
+    vocab = Vocabulary(freq_threshold, 
+                       # sequence_length
+                      )
     captions = []
     for d in annotations:
         captions.append(d['caption'])
@@ -203,9 +207,9 @@ def prepare_datasets(train_percent = 0.87, super_categories=None,
     test_img_paths = {'image_paths': [image_folder_test/(str(id).zfill(12) + '.jpg')
                                        for id in img_list_test]}
     
-    save_files = {'sports_captions_train': new_captions_train,
-                  'sports_captions_val': new_captions_val,
-                  'sports_captions_test': new_captions_test,
+    save_files = {'custom_captions_train': new_captions_train,
+                  'custom_captions_val': new_captions_val,
+                  'custom_captions_test': new_captions_test,
                  }
 
     for key, val in save_files.items():
