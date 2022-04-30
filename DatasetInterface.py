@@ -94,7 +94,12 @@ class MSCOCOInterface(data.Dataset):
         if vocab_from_file:
             p = Path('vocabulary')
             self.string_to_index = json.load(open(p/'string_to_index.json'))
-            self.idx_to_string = json.load(open(p/'idx_to_string.json'))
+            # self.idx_to_string = json.load(open(p/'idx_to_string.json'))
+            # below is quickest way I can think to deal with fact that load
+            # json loads interger keys as strings
+            self.idx_to_string = dict(zip(self.string_to_index.values(),
+                                          self.string_to_index.keys()))
+                
             self.vocabulary = Vocabulary(self.freq_threshold,
                                          # self.sequence_length,
                                          self.idx_to_string,
@@ -179,7 +184,7 @@ class MSCOCOInterface(data.Dataset):
         cap = self.img_deque[idx][1]
         plt.imshow(img)
         plt.show()
-        # print(cap)
+        print(cap)
 
     # return the length of the dataset
     def __len__(self):
