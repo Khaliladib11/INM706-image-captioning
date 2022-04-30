@@ -31,17 +31,19 @@ class Encoder(nn.Module):
             param.requires_grad_(False)
 
         # replace the last fully connected layer output with embed_size
-        self.resnet152.fc = nn.Linear(in_features=self.resnet152.fc.in_features, out_features=1024)
-
-        self.embed = nn.Linear(in_features=1024, out_features=embed_size)
-
-        self.drop = nn.Dropout(p=0.5)
-
-        self.relu = nn.ReLU()
+        modules = list(resnet.children())[:-1]
+        self.resnet = nn.Sequential(*modules)
+        self.embed = nn.Linear(resnet.fc.in_features, embed_size)
+        # self.bn = nn.BatchNorm1d(embed_size, momenturm=0.01) # could add this - haven't tested yet
 
     def forward(self, images):
-        """Extract feature vectors from input images."""
-        features = self.drop(self.relu(self.resnet152(images)))
+        """Extract feature vectors from input images.
+        images are size 
+        
+        """
+        
+        features = self.resnet(images)
+        features = features.view(features.size(0), -1)
         features = self.embed(features)
         return features
 
