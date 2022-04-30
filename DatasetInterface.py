@@ -1,7 +1,7 @@
 # import libraries
 import matplotlib.pyplot as plt
-import random
 import itertools
+import json
 
 import torch
 from torch.utils import data
@@ -22,8 +22,9 @@ class MSCOCOInterface(data.Dataset):
                  imgs_path,
                  captions_path,
                  freq_threshold,
-                 sequence_length,
+                 sequence_length,  # might not need this
                  caps_per_img=1,
+                 vocab_from_file=True,  # new variable to load from json file
                  idx_to_string=None,
                  string_to_index=None,
                  ):
@@ -34,6 +35,7 @@ class MSCOCOInterface(data.Dataset):
         :param freq_threshold (int): if a word is not repeated enough don't add it to the dictionary
         :param sequence_length (int): all sequences must be the same length, so this param is used to pad or cut from sentence
         :param caps_per_img (int): the number of image we want to return for each image
+        :param vocab_from_file (bool): if true then load vocab from json files in vocabulary folder - currently no ability to specify file name
         :param idx_to_string (dict): dictionary contains the index to string vocabulary
         :param string_to_index (dict): dictionary contains the string to index vocabulary
         :param stage (string): parameter to load train, validation or test images
@@ -51,39 +53,40 @@ class MSCOCOInterface(data.Dataset):
             self.caps_per_img = caps_per_img
 
         self.coco = COCO(self.imgs_path, self.captions_path)
-        # self.vocabulary = Vocabulary(self.freq_threshold, self.sequence_length, self.idx_to_string, self.string_to_index)
 
-        if idx_to_string is None or string_to_index is None:
+        # create vocab from scratch if it is not already done
+        if vocab_from_file:
+            p = Path('vocabulary')
+            self.string_to_index = json.load(open(p/'string_to_index.json'))
+            self.idx_to_string = json.load(open(p/'idx_to_string.json'))
+            
+        else:
+            self.vocabulary = Vocabulary(self.freq_threshold, self.sequence_length, self.idx_to_string,
+                                         self.string_to_index)
             self.vocabulary = Vocabulary(self.freq_threshold, self.sequence_length)
             self.create_vocabulary()
 
-        else:
-            self.string_to_index = string_to_index
-            self.idx_to_string = idx_to_string
-            self.vocabulary = Vocabulary(self.freq_threshold, self.sequence_length, self.idx_to_string,
-                                         self.string_to_index)
-
-        self.__create_data_deque()
-
-        random.seed(seed)
+        self.img_deque = self.__create_data_deque()
 
     # method to create the list deque of imgs and captions according to the number of caption per image
     # this will only create a list of captions for captions in the captions file - it doesn't matter
     # if more images have been loaded for the COCO dataset
     def __create_data_deque(self):
-        self.img_deque = deque()
+        img_deque = deque()
         imgs = self.coco.imgs
         for img in imgs:
             counter = 0
             while counter < self.caps_per_img:
                 if len(self.get_captions(img)) > 0:
-                    self.img_deque.append([img, self.get_captions(img)[counter]])
+                    img_deque.append([img, self.get_captions(img)[counter]])
                     counter += 1
                 else:
                     break
+        return img_deque
 
     # method to create vocabulary
     def create_vocabulary(self):
+        # coco.captions_to_list creates a list of (non-tokenized) captions
         self.vocabulary.build_vocabulary(self.coco.captions_to_list())
         self.idx_to_string = self.vocabulary.idx_to_string
         self.string_to_index = self.vocabulary.string_to_index
