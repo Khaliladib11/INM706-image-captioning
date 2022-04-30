@@ -7,7 +7,8 @@ from collections import Counter
 class Vocabulary:
 
     # Constructor
-    def __init__(self, freq_threshold, sequence_length=6, idx_to_string=None, string_to_index=None):
+    def __init__(self, freq_threshold, #sequence_length=6, 
+                 idx_to_string=None, string_to_index=None):
         """
         Constructor to create vocabulary of words and to tokenize them.
         :param freq_threshold (int): if a word is not repeated enough don't add it to the dictionary
@@ -36,7 +37,7 @@ class Vocabulary:
             self.idx_to_string = idx_to_string
             self.string_to_index = string_to_index
         self.freq_threshold = freq_threshold
-        self.sequence_length = sequence_length
+        # self.sequence_length = sequence_length
         self.stop_words = stopwords.words('english')  # stop words in english
 
     # return the length of the vocabulary
@@ -52,24 +53,25 @@ class Vocabulary:
         return tokenized_sentence
 
     # method to build the vocabulary for us
-    def build_vocabulary_old(self, sentences_list):
-        frequencies = {}
-        idx = len(self.idx_to_string)
-        for sentence in sentences_list:
-            for token in self.tokenizer_eng(sentence):
-                if token not in self.string_to_index:
-                    frequencies[token] = 1
-                    self.string_to_index[token] = idx
-                    self.idx_to_string[idx] = token
-                    idx += 1
-                else:
-                    frequencies[token] += 1
+    # commented out below as obsolete: TODO delete when tested
+#     def build_vocabulary_old(self, sentences_list):
+#         frequencies = {}
+#         idx = len(self.idx_to_string)
+#         for sentence in sentences_list:
+#             for token in self.tokenizer_eng(sentence):
+#                 if token not in self.string_to_index:
+#                     frequencies[token] = 1
+#                     self.string_to_index[token] = idx
+#                     self.idx_to_string[idx] = token
+#                     idx += 1
+#                 else:
+#                     frequencies[token] += 1
 
-        for word in frequencies:
-            if frequencies[word] < self.freq_threshold:
-                idx = self.string_to_index[word]
-                self.string_to_index.pop(word)
-                self.idx_to_string.pop(idx)
+#         for word in frequencies:
+#             if frequencies[word] < self.freq_threshold:
+#                 idx = self.string_to_index[word]
+#                 self.string_to_index.pop(word)
+#                 self.idx_to_string.pop(idx)
 
     def build_vocabulary(self, sentences_list):
         # create one string with all sentences joined together
@@ -93,10 +95,11 @@ class Vocabulary:
         idx_of_sentence = [self.string_to_index[word] if word in self.string_to_index else self.string_to_index['<UNK>']
                            for word in tokenized_sentence]
 
-        if len(idx_of_sentence) >= self.sequence_length:
-            idx_of_sentence = idx_of_sentence[:self.sequence_length]
-        else:
-            idx_of_sentence.extend([self.string_to_index['<PAD>']] * (self.sequence_length - len(idx_of_sentence)))
+        # we no longer pad captions: delete commented out code when tested
+        # if len(idx_of_sentence) >= self.sequence_length:
+        #     idx_of_sentence = idx_of_sentence[:self.sequence_length]
+        # else:
+        #     idx_of_sentence.extend([self.string_to_index['<PAD>']] * (self.sequence_length - len(idx_of_sentence)))
         return idx_of_sentence
 
     # method to convert idxs to words

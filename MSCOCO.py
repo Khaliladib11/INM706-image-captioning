@@ -1,8 +1,10 @@
 import os
 import json
 from PIL import Image
+import nltk
 from pathlib import Path
 from collections import deque
+from tqdm import tqdm
 
 
 class COCO:
@@ -25,6 +27,7 @@ class COCO:
         self.imgs = self._get_imgs(self.caption_images)
 
         self.imgs_caps_dict = self._create_caption_dict()
+
 
     # Load captions
     def _load_captions(self) -> list:
