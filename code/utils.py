@@ -17,6 +17,7 @@ def save_model(epoch, encoder, decoder, training_loss, validation_loss, checkpoi
         'decoder_state_dict': decoder.state_dict(),
         'training_loss': training_loss,
         'validation_loss': validation_loss,
+        'hyper_params': hyper_params
     }, checkpoint_path)
 
 
@@ -26,6 +27,7 @@ def load_model(encoder, decoder, checkpoint_path):
     decoder.load_state_dict(checkpoint['decoder_state_dict'])
     training_loss = checkpoint['training_loss']
     validation_loss = checkpoint['validation_loss']
+    hyper_params = checkpoint['hyper_params']
 
     return encoder, decoder, training_loss, validation_loss
 
