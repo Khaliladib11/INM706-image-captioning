@@ -76,8 +76,9 @@ def train(encoder, decoder,
             train_epoch_loss += loss.item()
 
             if i % print_every == 0:
-                print("Step: [{0:d}/{1:d}] || Average Training Loss: {2:.4f}".format(id, len(train_loader),
-                                                                                     train_epoch_loss / (id + 1)))
+                print("Step: {:15}|| Average Training Loss: {:.4f}".
+                      format('[{:d}/{:d}]'.format({0:d}/{1:d}),
+                             train_epoch_loss / (id + 1)))
 
         train_epoch_loss /= len(train_loader)
         training_loss.append(train_epoch_loss)
