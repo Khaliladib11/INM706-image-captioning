@@ -21,13 +21,13 @@ class Encoder(nn.Module):
         super(Encoder, self).__init__()
         # Load pretrained resnet152 on ImageNet
         if pretrained:
-            self.resnet152 = models.resnet152(pretrained=True)
+            resnet = models.resnet152(pretrained=True)
         else:
-            self.resnet152 = models.resnet152(pretrained=False)
-            self.resnet152.load_state_dict(torch.load(model_weight_path))
+            resnet = models.resnet152(pretrained=False)
+            resnet.load_state_dict(torch.load(model_weight_path))
 
         # Freeze the parameters of pre-trained model
-        for param in self.resnet152.parameters():
+        for param in resnet.parameters():
             param.requires_grad_(False)
 
         # replace the last fully connected layer output with embed_size
@@ -41,9 +41,9 @@ class Encoder(nn.Module):
         images are size 
         
         """
-        
         features = self.resnet(images)
-        features = features.view(features.size(0), -1)
+        features = features.view(features.size(0), -1) 
+            # returns tensor (batch_size, size1 x size2)
         features = self.embed(features)
         return features
 
@@ -69,25 +69,73 @@ class Decoder(nn.Module):
         self.embed_size = embed_size
         self.hidden_size = hidden_size
         self.vocab_size = vocab_size
+        self.num_layers = num_layers
 
-        self.lstm = nn.LSTM(input_size=embed_size,
-                            hidden_size=hidden_size,
-                            num_layers=num_layers,
+        self.lstm = nn.LSTM(input_size=self.embed_size,
+                            hidden_size=self.hidden_size,
+                            num_layers=self.num_layers,
                             batch_first=True)
 
-        self.dropout = nn.Dropout(0.2)
+        self.dropout = nn.Dropout(0.5)  # 0.2 originally, now 0.5
         self.embed = nn.Embedding(self.vocab_size, self.embed_size)
         self.linear = nn.Linear(self.hidden_size, self.vocab_size)
+        # self.model_init() # use zavier's initialization
 
-        # self.init_weights()
+        # To provide visibility, print tensor dimensions when instantiating the model
+        # self.print_tensor_dimensions = True # flag to print if we need
+        # self.init_weights()  # leaving this for now
 
     def forward(self, features, captions):
+        
+        ## Decoder forward useful parameters
+        self.batch_size = features.shape[0]
+        self.seq_length = captions.shape[1]
+
+        # Initializing the hidden and cell states and 
+        # flushing out previous hidden states
+        # We don't want the previous batch to influence 
+        # the output of next image-caption input. New on 1 May.
+        self.hidden = self.init_hidden(self.batch_size)
+        
         embeddings = self.embed(captions)
-        features = features.unsqueeze(1)
+        # Alex (1 May): changing below from unsqueeze to 
+        # view cos its clearer what we're doing
+        features = features.view(self.batch_size, 1, self.embed_size)
+        
+        # embeddings is size (batch size, length of caption -1 
+        #                     - remove EOS, embedding size)
         embeddings = torch.cat((features, embeddings[:, :-1, :]), dim=1)
-        hiddens, c = self.lstm(embeddings)
-        outputs = self.linear(hiddens)
+        lstm_out, hiddens = self.lstm(embeddings, self.hidden)
+        lstm_out = self.dropout(lstm_out)
+        
+        # To chain multiple LSTM layers
+        lstm_out = lstm_out.contiguous()
+        
+        lstm_out = lstm_out.view(self.batch_size,
+                                 self.seq_length,
+                                 self.hidden_size)  
+        outputs = self.linear(lstm_out)
+        
         return outputs
+    
+    def init_hidden(self, batch_size):
+        ''' Initializes hidden state '''
+        # Create two new tensors with sizes 
+        # n_layers x batch_size x n_hidden,
+        # initialized randomly, for hidden state 
+        # and cell state of LSTM
+                
+        device = torch.device("cuda" if torch.cuda.is_available() 
+                              else "cpu")
+        # generates tuple of (hiden state, cell memory)
+        hidden = (torch.randn(self.num_layers,
+                              batch_size,
+                              self.hidden_size).to(device),
+                  torch.randn(self.num_layers,
+                              batch_size,
+                              self.hidden_size).to(device))
+    
+        return hidden
 
     # get the idxs of the predicted words.
     def get_predict(self, features, max_length):
