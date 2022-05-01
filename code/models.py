@@ -39,7 +39,6 @@ class Encoder(nn.Module):
         features = self.resnet(images)
         features = features.view(features.size(0), -1)
         features = self.embed(features)
-        return features
 
 
 # RNN Decoder
