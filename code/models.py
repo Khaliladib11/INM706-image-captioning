@@ -20,19 +20,19 @@ class Encoder(nn.Module):
         super(Encoder, self).__init__()
         # Load pretrained resnet152 on ImageNet
         if pretrained:
-            self.resnet = models.resnet152(pretrained=True)
+            resnet = models.resnet152(pretrained=True)
         else:
-            self.resnet = models.resnet152(pretrained=False)
-            self.resnet.load_state_dict(torch.load(model_weight_path))
+            resnet = models.resnet152(pretrained=False)
+            resnet.load_state_dict(torch.load(model_weight_path))
 
         # Freeze the parameters of pre-trained model
-        for param in self.resnet.parameters():
+        for param in resnet.parameters():
             param.requires_grad_(False)
 
         # replace the last fully connected layer output with embed_size
-        modules = list(self.resnet.children())[:-1]
+        modules = list(resnet.children())[:-1]
         self.resnet = nn.Sequential(*modules)
-        self.embed = nn.Linear(self.resnet.fc.in_features, embed_size)
+        self.embed = nn.Linear(resnet.fc.in_features, embed_size)
 
     def forward(self, images):
         """Extract feature vectors from input images."""

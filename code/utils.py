@@ -30,13 +30,21 @@ def load_model(encoder, decoder, checkpoint_path):
     return encoder, decoder, training_loss, validation_loss
 
 
-def train(encoder, decoder, criterion, optimizer, train_loader, val_loader, total_epoch, device, checkpoint_path,
+def train(encoder, decoder, 
+          criterion, optimizer,
+          train_loader, val_loader,
+          total_epoch, device,
+          checkpoint_path,
+          training_loss=None, validation_loss=None,
           print_every=1000):
+    
     encoder.to(device)
     decoder.to(device)
 
-    training_loss = []
-    validation_loss = []
+    if not training_loss:
+        training_loss = []
+    if not validation_loss:
+        validation_loss = []
 
     for epoch in range(total_epoch):
 

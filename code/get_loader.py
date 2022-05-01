@@ -25,7 +25,6 @@ class MSCOCODataset(data.Dataset):
                  caps_per_image,
                  mode='train',
                  transform=None,
-                 idx2word=None,
                  word2idx=None
                  ):
 
@@ -36,12 +35,14 @@ class MSCOCODataset(data.Dataset):
         self.transform = transform
 
         self.coco = COCO(self.images_path, self.captions_path)
-
+        # self.images = self.coco.images
+        self.images = self.coco.images
         random.seed(706)
 
         if mode == 'train':
-            if idx2word is None and word2idx is None:
-                imgs = deque(random.sample(self.coco.images[:80_000], 50_000))
+            if word2idx is None:
+                # imgs = deque(random.sample(self.coco.images[:80_000], 50_000))
+                imgs = deque(random.sample(self.images[:80_000], 50_000))
                 caps = []
                 for img in imgs:
                     for cp in self.coco.imgs_caps_dict[img]:
@@ -50,7 +51,11 @@ class MSCOCODataset(data.Dataset):
                 self.vocab = Vocabulary(freq_threshold=self.freq_threshold)
                 self.vocab.build_vocabulary(caps)
             else:
+                idx2word = dict(zip(word2idx.values(), word2idx.keys()))
                 self.vocab = Vocabulary(freq_threshold=self.freq_threshold, idx2word=idx2word, word2idx=word2idx)
+        
+        self.word2idx = word2idx
+        self.idx2word = idx2word
 
         """
         self.coco = COCO(self.images_path, self.captions_path)
@@ -60,9 +65,6 @@ class MSCOCODataset(data.Dataset):
         else:
             self.vocab = Vocabulary(freq_threshold=self.freq_threshold, idx2word=idx2word, word2idx=word2idx)
         """
-
-        # self.images = self.coco.images
-        self.images = imgs
         self.__create_data_deque()
 
     # method to create the list deque of imgs and captions according to the number of caption per image
@@ -100,7 +102,7 @@ class MSCOCODataset(data.Dataset):
     def load_img(self, idx):
         img_file_name = self.img_deque[idx][0]
         # convert the image to RGB to make sure all the images are 3D, because there are some images in grayscale
-        img = Image.open(self.images_path + '/' + img_file_name).convert('RGB')
+        img = Image.open(self.images_path/img_file_name).convert('RGB')
         if self.transform is None:
             img = self.img_transforms(img)
         else:
@@ -149,8 +151,8 @@ def get_loader(
         transform=None,
         batch_size=32,
         shuffle=True,
-        idx2word=None,
         word2idx=None):
+    
     dataset_params = {
         'images_path': images_path,
         'captions_path': captions_path,
@@ -158,7 +160,6 @@ def get_loader(
         'caps_per_image': caps_per_image,
         'mode': mode,
         'transform': transform,
-        'idx2word': idx2word,
         'word2idx': word2idx
     }
     dataset = MSCOCODataset(**dataset_params)
