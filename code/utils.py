@@ -57,7 +57,7 @@ def train(encoder, decoder,
         encoder.train()
         decoder.train()
 
-        for id, batch in enumerate(train_loader):
+        for i, batch in enumerate(train_loader):
             idx, images, captions = batch
             images, captions = images.to(device), captions.to(device)
 
@@ -75,7 +75,7 @@ def train(encoder, decoder,
 
             train_epoch_loss += loss.item()
 
-            if id % print_every == 0:
+            if i % print_every == 0:
                 print("Step: [{0:d}/{1:d}] || Average Training Loss: {2:.4f}".format(id, len(train_loader),
                                                                                      train_epoch_loss / (id + 1)))
 
@@ -86,16 +86,16 @@ def train(encoder, decoder,
         encoder.eval()
         decoder.eval()
 
-        for id, batch in enumerate(val_loader):
+        for i, batch in enumerate(val_loader):
             idx, images, captions = batch
             images, captions = images.to(device), captions.to(device)
             features = encoder(images)
             outputs = decoder(features, captions)
             loss = criterion(outputs.view(-1, decoder.vocab_size), captions.contiguous().view(-1))
             val_epoch_loss += loss.item()
-            if id % print_every == 0:
-                print("Step: [{0:d}/{1:d}] || Average Validation Loss: {2:.4f}".format(id, len(val_loader),
-                                                                                       val_epoch_loss / (id + 1)))
+            if i % print_every == 0:
+                print("Step: [{0:d}/{1:d}] || Average Validation Loss: {2:.4f}".format(i, len(val_loader),
+                                                                                       val_epoch_loss / (i + 1)))
 
         val_epoch_loss /= len(val_loader)
         validation_loss.append(val_epoch_loss)
