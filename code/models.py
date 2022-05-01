@@ -1,7 +1,6 @@
 import torch
 import torch.nn as nn
 import torchvision.models as models
-from torch.nn.utils.rnn import pack_padded_sequence
 
 
 # CNN Encoder
@@ -21,27 +20,24 @@ class Encoder(nn.Module):
         super(Encoder, self).__init__()
         # Load pretrained resnet152 on ImageNet
         if pretrained:
-            self.resnet152 = models.resnet152(pretrained=True)
+            self.resnet = models.resnet152(pretrained=True)
         else:
-            self.resnet152 = models.resnet152(pretrained=False)
-            self.resnet152.load_state_dict(torch.load(model_weight_path))
+            self.resnet = models.resnet152(pretrained=False)
+            self.resnet.load_state_dict(torch.load(model_weight_path))
 
         # Freeze the parameters of pre-trained model
-        for param in self.resnet152.parameters():
+        for param in self.resnet.parameters():
             param.requires_grad_(False)
 
         # replace the last fully connected layer output with embed_size
-        self.resnet152.fc = nn.Linear(in_features=self.resnet152.fc.in_features, out_features=1024)
-
-        self.embed = nn.Linear(in_features=1024, out_features=embed_size)
-
-        self.drop = nn.Dropout(p=0.5)
-
-        self.relu = nn.ReLU()
+        modules = list(self.resnet.children())[:-1]
+        self.resnet = nn.Sequential(*modules)
+        self.embed = nn.Linear(self.resnet.fc.in_features, embed_size)
 
     def forward(self, images):
         """Extract feature vectors from input images."""
-        features = self.drop(self.relu(self.resnet152(images)))
+        features = self.resnet(images)
+        features = features.view(features.size(0), -1)
         features = self.embed(features)
         return features
 
@@ -73,32 +69,55 @@ class Decoder(nn.Module):
                             num_layers=num_layers,
                             batch_first=True)
 
-        self.dropout = nn.Dropout(0.2)
         self.embed = nn.Embedding(self.vocab_size, self.embed_size)
         self.linear = nn.Linear(self.hidden_size, self.vocab_size)
+        self.dropout = nn.Dropout(0.5)
+
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
         # self.init_weights()
 
+    def init_hidden(self, batch_size):
+        """ At the start of training, we need to initialize a hidden state;
+        there will be none because the hidden state is formed based on previously seen data.
+        So, this function defines a hidden state with all zeroes
+        The axes semantics are (num_layers, batch_size, hidden_dim)
+        """
+        return (torch.zeros((1, batch_size, self.hidden_size), device=self.device), \
+                torch.zeros((1, batch_size, self.hidden_size), device=self.device))
+
     def forward(self, features, captions):
-        embeddings = self.embed(captions)
+        """
+        embeddings = self.dropout(self.embed(captions))
         features = features.unsqueeze(1)
         embeddings = torch.cat((features, embeddings[:, :-1, :]), dim=1)
-        hiddens, c = self.lstm(embeddings)
+        hiddens, _ = self.lstm(embeddings)
         outputs = self.linear(hiddens)
         return outputs
+        """
+        captions = captions[:, :-1]
+        batch_size = features.shape[0]  # features is of shape (batch_size, embed_size)
+        self.hidden = self.init_hidden(batch_size)
+        embeddings = self.embed(captions)
+        embeddings = torch.cat((features.unsqueeze(1), embeddings), dim=1)
+        lstm_out, self.hidden = self.lstm(embeddings, self.hidden)
+        outputs = self.linear(lstm_out)
+        return outputs
 
-    # get the idxs of the predicted words.
-    def get_predict(self, features, max_length):
-        idx = []
+    # greedy search
+    def predict(self, features, max_length, idx2word):
+        caption = []
         inputs = features.unsqueeze(0)
 
         for i in range(max_length):
             hiddens, states = self.lstm(inputs)
             outputs = self.linear(hiddens.squeeze(1))
-            _, predicted = outputs.max(1)
-            idx.append(predicted)
+            predicted = outputs.argmax(1)
+            caption.append(predicted.item())
             inputs = self.embed(predicted)  # (batch_size, embed_size)
             inputs = inputs.unsqueeze(1)  # (batch_size, 1, embed_size)
 
-        idx = torch.stack(idx, 1)
-        return idx
+            if idx2word[predicted.item()] == "<EOS>":
+                break
+
+        return caption

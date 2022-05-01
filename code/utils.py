@@ -10,16 +10,13 @@ import time
 import matplotlib.pyplot as plt
 
 
-def save_model(epoch, encoder, decoder, training_loss, validation_loss, training_perplexity, validation_preplexity,
-               checkpoint_path):
+def save_model(epoch, encoder, decoder, training_loss, validation_loss, checkpoint_path):
     torch.save({
         'epoch': epoch,
         'encoder_state_dict': encoder.state_dict(),
         'decoder_state_dict': decoder.state_dict(),
         'training_loss': training_loss,
-        'training_perplexity': training_perplexity,
         'validation_loss': validation_loss,
-        'validation_preplexity': validation_preplexity
     }, checkpoint_path)
 
 
@@ -29,10 +26,8 @@ def load_model(encoder, decoder, checkpoint_path):
     decoder.load_state_dict(checkpoint['decoder_state_dict'])
     training_loss = checkpoint['training_loss']
     validation_loss = checkpoint['validation_loss']
-    training_perplexity = checkpoint['training_perplexity']
-    validation_preplexity = checkpoint['validation_preplexity']
 
-    return encoder, decoder, training_loss, validation_loss, training_perplexity, validation_preplexity
+    return encoder, decoder, training_loss, validation_loss
 
 
 def train(encoder, decoder, criterion, optimizer, train_loader, val_loader, total_epoch, device, checkpoint_path,
@@ -42,8 +37,6 @@ def train(encoder, decoder, criterion, optimizer, train_loader, val_loader, tota
 
     training_loss = []
     validation_loss = []
-    training_perplexity = []
-    validation_preplexity = []
 
     for epoch in range(total_epoch):
 
@@ -80,7 +73,6 @@ def train(encoder, decoder, criterion, optimizer, train_loader, val_loader, tota
 
         train_epoch_loss /= len(train_loader)
         training_loss.append(train_epoch_loss)
-        training_perplexity.append(np.exp(train_epoch_loss))
 
         # validation phase
         encoder.eval()
@@ -99,12 +91,10 @@ def train(encoder, decoder, criterion, optimizer, train_loader, val_loader, tota
 
         val_epoch_loss /= len(val_loader)
         validation_loss.append(val_epoch_loss)
-        validation_preplexity.append(np.exp(val_epoch_loss))
 
         epoch_time = (time.time() - start_time) / 60 ** 1
 
-        save_model(epoch, encoder, decoder, training_loss, validation_loss, training_perplexity, validation_preplexity,
-                   checkpoint_path)
+        save_model(epoch, encoder, decoder, training_loss, validation_loss, checkpoint_path)
         print("######################################################################")
         print(
             "Epoch: [{0:d}/{1:d}] || Training Loss = {2:.2f} || Training Perplexity: {3:.2f} || Validation Loss: {4:.2f} || Validation Perplexity: {5:.2f}|| Time: {5:f}" \
@@ -112,7 +102,7 @@ def train(encoder, decoder, criterion, optimizer, train_loader, val_loader, tota
                         np.exp(val_epoch_loss), epoch_time))
         print("######################################################################")
 
-    return training_loss, validation_loss, training_perplexity, validation_preplexity
+    return training_loss, validation_loss
 
 
 def plot_loss(training_loss, validation_loss):
