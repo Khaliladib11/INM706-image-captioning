@@ -20,26 +20,27 @@ class Encoder(nn.Module):
         super(Encoder, self).__init__()
         # Load pretrained resnet152 on ImageNet
         if pretrained:
-            resnet = models.resnet152(pretrained=True)
+            self.resnet = models.resnet152(pretrained=True)
         else:
-            resnet = models.resnet152(pretrained=False)
-            resnet.load_state_dict(torch.load(model_weight_path))
+            self.resnet = models.resnet152(pretrained=False)
+            self.resnet.load_state_dict(torch.load(model_weight_path))
 
         # Freeze the parameters of pre-trained model
-        for param in resnet.parameters():
+        for param in self.resnet.parameters():
             param.requires_grad_(False)
 
         # replace the last fully connected layer output with embed_size
-        modules = list(resnet.children())[:-1]
-        self.resnet = nn.Sequential(*modules)
-        self.embed = nn.Linear(resnet.fc.in_features, embed_size)
+        self.resnet.fc = nn.Linear(in_features=self.resnet.fc.in_features, out_features=1024)
+
+        self.embed = nn.Linear(in_features=1024, out_features=embed_size)
+
 
     def forward(self, images):
-        """Extract feature vectors from input images."""
-        features = self.resnet(images)
-        features = features.view(features.size(0), -1)
-        features = self.embed(features)
-        return features
+            """Extract feature vectors from input images."""
+            features = self.resnet(images)
+            features = features.view(features.size(0), -1)
+            features = self.embed(features)
+            return features
 
 
 # RNN Decoder
@@ -67,6 +68,7 @@ class Decoder(nn.Module):
         self.lstm = nn.LSTM(input_size=embed_size,
                             hidden_size=hidden_size,
                             num_layers=num_layers,
+                            dropout=0,
                             batch_first=True)
 
         self.embed = nn.Embedding(self.vocab_size, self.embed_size)
@@ -96,14 +98,31 @@ class Decoder(nn.Module):
         return outputs
         """
         captions = captions[:, :-1]
-        batch_size = features.shape[0]  # features is of shape (batch_size, embed_size)
-        self.hidden = self.init_hidden(batch_size)
-        embeddings = self.embed(captions)
-        embeddings = torch.cat((features.unsqueeze(1), embeddings), dim=1)
-        lstm_out, self.hidden = self.lstm(embeddings, self.hidden)
-        outputs = self.linear(lstm_out)
+        captions = self.embed(captions)
+        inputs = torch.cat((features.unsqueeze(1), captions), dim=1)
+        outputs, _ = self.lstm(inputs)
+        outputs = self.linear(outputs)
         return outputs
 
+    # get prediction from features input, greedy search, take the argmax
+    def predict(self, features, word2idx, max_len=20, states=None):
+        caption = []
+        inputs = features
+        for _ in range(max_len):
+            output, states = self.lstm(inputs, states)
+            output = self.linear(output)
+            _, predicted = output.max(2)
+            caption.append(predicted.item())
+
+            if predicted == word2idx['<EOS>']:
+                break
+
+            inputs = self.embed(predicted)
+            # features = features.unsqueeze(1)
+
+        return caption
+
+    """
     # greedy search
     def predict(self, features, max_length, idx2word):
         caption = []
@@ -121,3 +140,4 @@ class Decoder(nn.Module):
                 break
 
         return caption
+    """

@@ -68,7 +68,7 @@ class COCO:
         return captions
 
     def get_img(self, idx):
-        return Image.open(self.images_path / self.images[idx])
+        return Image.open(self.imgs_path / self.images[idx])
 
     '''
        method to convert imgs_caps_dict to list
