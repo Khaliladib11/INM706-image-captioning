@@ -1,5 +1,6 @@
 from vocabulary import Vocabulary
 import json
+import ujson
 from pathlib import Path
 import numpy as np
 
@@ -54,3 +55,160 @@ def build_vocab(freq_threshold=2,
         json.dump(vocab.word2idx, f)
         
     return None
+
+def prepare_datasets(train_percent = 0.87, super_categories=None,
+                    max_train=15000, max_val=3000, max_test=3000):
+    """Prepare train/val/test datasets for training.
+    Can reduce size of data by only picking certain super_categories - e.g. sports
+    
+    train_percent, float. between 0 and 1. How to split eligible images between train and val.
+    super_categories, list. If None then selects all data
+    
+    possible supercategories are: 
+    """
+    
+    annotations_folder = Path(r'../Datasets/coco/annotations')
+    image_folder = Path(r'../Datasets/coco/images/train2017')
+    image_folder_test = Path(r'../Datasets/coco/images/val2017')
+    
+    STAGE = 'train'
+    TRAIN_PCT = train_percent
+    instances_file = annotations_folder/f'instances_{STAGE}2017.json'
+    captions_file = annotations_folder/f'captions_{STAGE}2017.json'
+
+    with open(instances_file) as f:
+        instances = ujson.load(f)
+    with open(captions_file) as f:
+        captions = ujson.load(f)
+        
+    if super_categories:
+        supers = super_categories
+    else:
+        supers = []
+        for cat in instances['categories']:
+            supers.append(cat['supercategory'])
+        supers = list(set(supers))
+        
+    ids = []
+    id_dict = {}
+    id_to_name = dict(zip([cat['id'] for cat in instances['categories']],
+                         [cat['name'] for cat in instances['categories']]))
+    for d in instances['categories']:
+        if d['supercategory'] in supers:
+            ids.append(d['id'])
+            id_dict[d['id']] = d['name']
+
+    img_list = []
+    full_img_list = [int(f.stem) for f in image_folder.glob('**/*')]
+    annotations = []
+    for d in instances['annotations']:
+        # full_img_list.append(d['image_id'])
+        if d['category_id'] in ids:
+            img_list.append(d['image_id'])
+            annotations.append(d)
+    img_list = list(set(img_list))
+    
+    rng = np.random.default_rng(42)
+    imgs_train = rng.choice(img_list,
+                            size =int(TRAIN_PCT * len(img_list)),
+                            replace=False)
+    imgs_val = list(set(img_list).difference(set(imgs_train)))
+
+    if len(imgs_train > max_train):
+        imgs_train = imgs_train[:max_train]
+    if len(imgs_val) > max_val:
+        imgs_val = imgs_val[:max_val]
+
+    captions_full = dict(zip(full_img_list, 
+                             [[] for _ in range(len(full_img_list))]))
+    images_dict = dict(zip(full_img_list, 
+                             [[] for _ in range(len(full_img_list))]))
+
+    for d in captions['annotations']:
+        captions_full[d['image_id']].append(d)
+
+    for d in captions['images']:
+        images_dict[d['id']].append(d)
+
+    def create_lists(img_list, capts_dict, imgs_dict):
+        new_capt_list = []
+        new_img_list = []
+        for img_id in img_list:
+            new_capt_list.extend(capts_dict[img_id])
+            new_img_list.extend(imgs_dict[img_id])
+        return new_capt_list, new_img_list
+
+    n_capt_list_train, n_img_list_train = create_lists(imgs_train,
+                                                       captions_full,
+                                                       images_dict)
+    n_capt_list_val, n_img_list_val = create_lists(imgs_val,
+                                                   captions_full,
+                                                   images_dict)
+
+    new_captions_train = {'info': captions['info'],
+                        'images': n_img_list_train,
+                        'annotations': n_capt_list_train}
+
+    new_captions_val = {'info': captions['info'],
+                        'images': n_img_list_val,
+                        'annotations': n_capt_list_val}
+
+    train_img_paths = {'image_paths': [image_folder/(str(id).zfill(12) + '.jpg')
+                                       for id in imgs_train]}
+
+    val_img_paths = {'image_paths': [image_folder/(str(id).zfill(12) + '.jpg')
+                                       for id in imgs_val]}
+    
+    STAGE = 'val' # we are using coco validation set for our test set
+    instances_file = annotations_folder/f'instances_{STAGE}2017.json'
+    captions_file = annotations_folder/f'captions_{STAGE}2017.json'
+
+    with open(instances_file) as f:
+        instances_test = ujson.load(f)
+    with open(captions_file) as f:
+        captions_test = ujson.load(f)
+
+    img_list_test = []
+    full_img_list_test = [int(f.stem) for f in image_folder_test.glob('**/*')]
+    annotations_test = []
+    for d in instances_test['annotations']:
+        # full_img_list.append(d['image_id'])
+        if d['category_id'] in ids:
+            img_list_test.append(d['image_id'])
+            annotations_test.append(d)
+    img_list_test = list(set(img_list_test))
+    if len(img_list_test) > max_test:
+        img_list_test = img_list_test[:max_test]
+
+    captions_full_test = dict(zip(full_img_list_test, 
+                             [[] for _ in range(len(full_img_list_test))]))
+    images_dict_test = dict(zip(full_img_list_test, 
+                             [[] for _ in range(len(full_img_list_test))]))
+
+    for d in captions_test['annotations']:
+        captions_full_test[d['image_id']].append(d)
+
+    for d in captions_test['images']:
+        images_dict_test[d['id']].append(d)
+
+    n_capt_list_test, n_img_list_test = create_lists(img_list_test,
+                                                     captions_full_test,
+                                                     images_dict_test)
+
+    new_captions_test = {'info': captions_test['info'],
+                        'images': n_img_list_test,
+                        'annotations': n_capt_list_test}
+
+    test_img_paths = {'image_paths': [image_folder_test/(str(id).zfill(12) + '.jpg')
+                                       for id in img_list_test]}
+    
+    save_files = {'custom_captions_train': new_captions_train,
+                  'custom_captions_val': new_captions_val,
+                  'custom_captions_test': new_captions_test,
+                 }
+
+    for key, val in save_files.items():
+        with open(annotations_folder/f'{key}.json', 'w') as json_file:
+            ujson.dump(val, json_file)
+            
+    print("train dataset has {} images\n val dataset has {} images\n test dataset has {} images".format(len(imgs_train), len(imgs_val), len(img_list_test)))

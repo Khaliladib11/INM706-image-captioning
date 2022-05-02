@@ -137,10 +137,10 @@ class PAD:
         imgs = [item[1].unsqueeze(0) for item in batch]
         imgs = torch.cat(imgs, dim=0)
         capts = [item[2] for item in batch]
-        capt_lens = [len(item[2] for item in batch]
+        capt_lens = [len(item[2]) for item in batch]
         targets = pad_sequence(capts, batch_first=True, padding_value=self.pad_idx)
                          
-        return idxs, imgs, capts, capt_lens
+        return idxs, imgs, targets, capt_lens
 
 
 def get_loader(
@@ -165,6 +165,7 @@ def get_loader(
     }
     dataset = MSCOCODataset(**dataset_params)
 
+    pad_idx = dataset.word2idx['<PAD>']
 
     loader = data.DataLoader(
         dataset=dataset,

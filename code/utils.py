@@ -10,7 +10,9 @@ import time
 import matplotlib.pyplot as plt
 
 
-def save_model(epoch, encoder, decoder, training_loss, validation_loss, checkpoint_path):
+def save_model(epoch, encoder, decoder,
+               training_loss, validation_loss,
+               hyper_params, checkpoint_path):
     torch.save({
         'epoch': epoch,
         'encoder_state_dict': encoder.state_dict(),
@@ -29,7 +31,7 @@ def load_model(encoder, decoder, checkpoint_path):
     validation_loss = checkpoint['validation_loss']
     hyper_params = checkpoint['hyper_params']
 
-    return encoder, decoder, training_loss, validation_loss
+    return encoder, decoder, training_loss, validation_loss, hyper_params
 
 
 def train(encoder, decoder, 
@@ -60,15 +62,18 @@ def train(encoder, decoder,
         decoder.train()
 
         for i, batch in enumerate(train_loader):
-            idx, images, captions = batch
+            idx, images, captions, capt_lens = batch
             images, captions = images.to(device), captions.to(device)
-
+            # print(captions[:,-5:])
+            # print(captions.shape)
+            # print(capt_lens)
+            
             # Zero the gradients.
             encoder.zero_grad()
             decoder.zero_grad()
 
             features = encoder(images)
-            outputs = decoder(features, captions)
+            outputs = decoder(features, captions, capt_lens)
 
             loss = criterion(outputs.view(-1, decoder.vocab_size), captions.contiguous().view(-1))
 
@@ -79,8 +84,8 @@ def train(encoder, decoder,
 
             if i % print_every == 0:
                 print("Step: {:15}|| Average Training Loss: {:.4f}".
-                      format('[{:d}/{:d}]'.format({0:d}/{1:d}),
-                             train_epoch_loss / (id + 1)))
+                      format('[{0:d}/{1:d}]'.format(i, len(train_loader)),
+                             train_epoch_loss / (i + 1)))
 
         train_epoch_loss /= len(train_loader)
         training_loss.append(train_epoch_loss)
@@ -90,22 +95,27 @@ def train(encoder, decoder,
         decoder.eval()
 
         for i, batch in enumerate(val_loader):
-            idx, images, captions = batch
+            idx, images, captions, capt_lens = batch
             images, captions = images.to(device), captions.to(device)
+            
             features = encoder(images)
-            outputs = decoder(features, captions)
+            outputs = decoder(features, captions, capt_lens)
+            
             loss = criterion(outputs.view(-1, decoder.vocab_size), captions.contiguous().view(-1))
+            
             val_epoch_loss += loss.item()
+            
             if i % print_every == 0:
-                print("Step: [{0:d}/{1:d}] || Average Validation Loss: {2:.4f}".format(i, len(val_loader),
-                                                                                       val_epoch_loss / (i + 1)))
+                print("Step: {:15}|| Average Validation Loss: {:.4f}".
+                      format('[{0:d}/{1:d}]'.format(i, len(val_loader)),
+                             val_epoch_loss / (i + 1)))
 
         val_epoch_loss /= len(val_loader)
         validation_loss.append(val_epoch_loss)
 
         epoch_time = (time.time() - start_time) / 60 ** 1
 
-        save_model(epoch, encoder, decoder, training_loss, validation_loss, checkpoint_path)
+        save_model(epoch, encoder, decoder, training_loss, validation_loss, hyper_params, checkpoint_path)
         print("######################################################################")
         print(
             "Epoch: [{0:d}/{1:d}] || Training Loss = {2:.2f} || Training Perplexity: {3:.2f} || Validation Loss: {4:.2f} || Validation Perplexity: {5:.2f}|| Time: {5:f}" \

@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torchvision.models as models
+from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 
 
 # CNN Encoder
@@ -39,6 +40,7 @@ class Encoder(nn.Module):
         features = self.resnet(images)
         features = features.view(features.size(0), -1)
         features = self.embed(features)
+        return features
 
 
 # RNN Decoder
@@ -85,7 +87,7 @@ class Decoder(nn.Module):
         return (torch.zeros((1, batch_size, self.hidden_size), device=self.device), \
                 torch.zeros((1, batch_size, self.hidden_size), device=self.device))
 
-    def forward(self, features, captions):
+    def forward(self, features, captions, capt_lens):
         """
         embeddings = self.dropout(self.embed(captions))
         features = features.unsqueeze(1)
@@ -98,10 +100,29 @@ class Decoder(nn.Module):
         batch_size = features.shape[0]  # features is of shape (batch_size, embed_size)
         self.hidden = self.init_hidden(batch_size)
         embeddings = self.embed(captions)
-        embeddings = torch.cat((features.unsqueeze(1), embeddings), dim=1)
-        lstm_out, self.hidden = self.lstm(embeddings, self.hidden)
-        outputs = self.linear(lstm_out)
-        return outputs
+        embeddings = torch.cat((features.unsqueeze(1),
+                                embeddings), dim=1)
+        # print('embeddings - 101 - type: {}'.format(type(embeddings)))
+        # print(embeddings.shape)
+        embeddings_packed = pack_padded_sequence(embeddings,
+                                                 capt_lens,
+                                                 batch_first=True, 
+                                                 enforce_sorted=False)
+        # print('embeddings_packed - 104 - type: {}'.format(type(embeddings_packed)))
+        
+        # print('embeddings_packed - 110 - type: {}'.format(type(embeddings_packed)))
+        
+        lstm_out_packed, self.hidden = self.lstm(embeddings_packed,
+                                                 self.hidden)
+        # print('lstm_out_packed - 115 - type: {}'.format(type(lstm_out_packed)))
+        outputs_padded, _ = pad_packed_sequence(lstm_out_packed,
+                                                batch_first=True)
+        # print('outputs_padded - 118 - type: {}'.format(type(outputs_padded)))
+        
+        outputs_padded = self.linear(outputs_padded)
+        # print('outputs_padded - 122 - type: {}'.format(type(outputs_padded)))
+        
+        return outputs_padded
 
     # greedy search
     def predict(self, features, max_length, idx2word):
