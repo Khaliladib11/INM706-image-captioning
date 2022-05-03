@@ -34,13 +34,13 @@ class Encoder(nn.Module):
 
         self.embed = nn.Linear(in_features=1024, out_features=embed_size)
 
-
     def forward(self, images):
-            """Extract feature vectors from input images."""
-            features = self.resnet(images)
-            features = features.view(features.size(0), -1)
-            features = self.embed(features)
-            return features
+        """Extract feature vectors from input images."""
+        features = self.resnet(images)
+        features = features.view(features.size(0), -1)
+        features = self.embed(features)
+        return features
+
 
 
 # RNN Decoder
@@ -102,9 +102,8 @@ class Decoder(nn.Module):
         inputs = torch.cat((features.unsqueeze(1), captions), dim=1)
         outputs, _ = self.lstm(inputs)
         outputs = self.linear(outputs)
-        return outputs
+        return  outputs
 
-    # get prediction from features input, greedy search, take the argmax
     def predict(self, features, word2idx, max_len=20, states=None):
         caption = []
         inputs = features
@@ -118,9 +117,11 @@ class Decoder(nn.Module):
                 break
 
             inputs = self.embed(predicted)
-            # features = features.unsqueeze(1)
+            #features = features.unsqueeze(1)
 
         return caption
+
+
 
     """
     # greedy search
@@ -141,3 +142,4 @@ class Decoder(nn.Module):
 
         return caption
     """
+

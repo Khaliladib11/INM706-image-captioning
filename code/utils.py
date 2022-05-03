@@ -4,12 +4,13 @@ import torch.utils.data as data
 import torch.optim as optim
 import torchvision.transforms as transforms
 
-from nltk.translate import bleu_score
-
 import json
 import numpy as np
 import time
 import matplotlib.pyplot as plt
+
+from PIL import Image
+from nltk.translate import bleu_score
 
 
 def load_vocab(idx2word_path, word2idx_path):
@@ -144,7 +145,7 @@ def plot_loss(training_loss, validation_loss):
     plt.show()
 
 
-# function to predict a caption from an image
+# function to predict a caption from an image                                            
 def predict(encoder, decoder, image, idx2word, word2idx, device):
     encoder.to(device)
     decoder.to(device)
@@ -169,19 +170,83 @@ def predict(encoder, decoder, image, idx2word, word2idx, device):
     result = ''
     for word in cap:
         result += word + ' '
-
+    
     result += '.'
     plt.imshow(image)
     plt.axis('off')
     plt.show()
-    print('Predicted caption: ', result.strip())
+    print(result.strip())
     return result.strip()
 
 
-def calculate_bleu_scores(references, hypothesis):
-    b1 = bleu_score.sentence_bleu(references, hypo, weights=(1.0, 0, 0, 0))
-    b2 = bleu_score.sentence_bleu(references, hypo, weights=(0.5, 0.5, 0, 0))
-    b3 = bleu_score.sentence_bleu(references, hypo, weights=(1.0 / 3.0, 1.0 / 3.0, 1.0 / 3.0, 0))
-    b4 = bleu_score.sentence_bleu(references, hypo, weights=(0.25, 0.25, 0.25, 0.25))
+def evaluate_bleu_score(encoder, decoder, loader, dataset, device):
+    encoder.to(device)
+    decoder.to(device)
+    encoder.eval()
+    decoder.eval()
+    
+    b1_avg = 0
+    b2_avg = 0
+    b3_avg = 0
+    b4_avg = 0
+    
+    for id, batch in enumerate(loader):
+        idx, image, caption = batch
+        image = image.to(device)
+        features = encoder(image).unsqueeze(1)
+        outputs = decoder.predict(features, dataset.vocab.word2idx, 20)
+        cap = [dataset.vocab.idx2word[word] for word in outputs]
+        cap = cap[1:-1]
+        result = ''
+        for word in cap:
+            result += word + ' '
 
-    return round(b1, 3), round(b2, 3), round(b3, 3), round(b4, 3)
+        result += '.'
+        hypo = result.strip()
+        
+        references = dataset.get_captions(dataset.img_deque[idx[0]][0])
+        
+        b1 = bleu_score.sentence_bleu(references, hypo, weights=(1.0, 0, 0, 0))
+        b2 = bleu_score.sentence_bleu(references, hypo, weights=(0.5, 0.5, 0, 0))
+        b3 = bleu_score.sentence_bleu(references, hypo, weights=(1.0/3.0, 1.0/3.0, 1.0/3.0, 0))
+        b4 = bleu_score.sentence_bleu(references, hypo, weights=(0.25, 0.25, 0.25, 0.25))
+        
+        b1_avg += round(b1, 3)
+        b2_avg += round(b2, 3)
+        b3_avg += round(b3, 3)
+        b4_avg += round(b4, 3)
+    
+    b1_avg = b1_avg / len(loader)
+    b2_avg = b2_avg / len(loader)
+    b3_avg = b3_avg / len(loader)
+    b4_avg = b4_avg / len(loader)
+    
+    return b1_avg, b2_avg, b3_avg, b4_avg
+
+
+def plot_bleu_score_bar(b1_avg, b2_avg, b3_avg, b4_avg):
+    x = np.array(["B1", "B2", "B3", "B4"])
+    y = np.array([b1_avg, b2_avg, b3_avg, b4_avg])
+    plt.bar(x,y)
+    plt.xlabel('BLEU')
+    plt.ylabel('SCORES')
+    plt.title("BLEU scores")
+    plt.show()
+
+
+def save_params(path, batch_size, embed_size, hidden_size, num_layers, vocab_size):
+    params = {
+        'batch_size': batch_size,
+        'embed_size': embed_size,
+        'hidden_size': hidden_size,
+        'num_layers': num_layers,
+        'vocab_size': vocab_size
+    }
+    with open(path, "w") as outfile:
+        json.dump(params, outfile)
+
+        
+def load_params(path):
+    with open(path) as json_file:
+        params = json.load(json_file)
+    return params
