@@ -4,6 +4,8 @@ import torch.utils.data as data
 import torch.optim as optim
 import torchvision.transforms as transforms
 
+from nltk.translate import bleu_score
+
 import json
 import numpy as np
 import time
@@ -172,4 +174,14 @@ def predict(encoder, decoder, image, idx2word, word2idx, device):
     plt.imshow(image)
     plt.axis('off')
     plt.show()
-    print(result.strip())
+    print('Predicted caption: ', result.strip())
+    return result.strip()
+
+
+def calculate_bleu_scores(references, hypothesis):
+    b1 = bleu_score.sentence_bleu(references, hypo, weights=(1.0, 0, 0, 0))
+    b2 = bleu_score.sentence_bleu(references, hypo, weights=(0.5, 0.5, 0, 0))
+    b3 = bleu_score.sentence_bleu(references, hypo, weights=(1.0 / 3.0, 1.0 / 3.0, 1.0 / 3.0, 0))
+    b4 = bleu_score.sentence_bleu(references, hypo, weights=(0.25, 0.25, 0.25, 0.25))
+
+    return round(b1, 3), round(b2, 3), round(b3, 3), round(b4, 3)
