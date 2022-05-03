@@ -39,6 +39,7 @@ def train(encoder, decoder,
           train_loader, val_loader,
           total_epoch, device,
           checkpoint_path,
+          hyper_params,
           training_loss=None, validation_loss=None,
           print_every=1000):
     
@@ -131,3 +132,36 @@ def plot_loss(training_loss, validation_loss):
     plt.plot(validation_loss, label="Validation Loss")
     plt.legend(loc='upper right')
     plt.show()
+    
+    
+def predict(encoder, decoder, image, idx2word, word2idx, device):
+    encoder.to(device)
+    decoder.to(device)
+    encoder.eval()
+    decoder.eval()
+
+    transformer = transforms.Compose([
+        transforms.Resize((224, 224)),
+        transforms.ToTensor(),
+        transforms.Normalize(
+            mean=[0.485, 0.456, 0.406],
+            std=[0.229, 0.224, 0.225]
+        )
+    ])
+
+    img = transformer(image)
+    img = img.to(device)
+    features = encoder(img.unsqueeze(0)).unsqueeze(1)
+    outputs = decoder.predict(features, word2idx, 20)
+    cap = [idx2word[word] for word in outputs]
+    cap = cap[1:-1]
+    result = ''
+    for word in cap:
+        result += word + ' '
+
+    result += '.'
+    plt.imshow(image)
+    plt.axis('off')
+    plt.show()
+    print('Predicted caption: ', result.strip())
+    return result.strip()

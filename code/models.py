@@ -102,42 +102,53 @@ class Decoder(nn.Module):
         embeddings = self.embed(captions)
         embeddings = torch.cat((features.unsqueeze(1),
                                 embeddings), dim=1)
-        # print('embeddings - 101 - type: {}'.format(type(embeddings)))
-        # print(embeddings.shape)
         embeddings_packed = pack_padded_sequence(embeddings,
                                                  capt_lens,
                                                  batch_first=True, 
                                                  enforce_sorted=False)
-        # print('embeddings_packed - 104 - type: {}'.format(type(embeddings_packed)))
-        
-        # print('embeddings_packed - 110 - type: {}'.format(type(embeddings_packed)))
         
         lstm_out_packed, self.hidden = self.lstm(embeddings_packed,
                                                  self.hidden)
-        # print('lstm_out_packed - 115 - type: {}'.format(type(lstm_out_packed)))
         outputs_padded, _ = pad_packed_sequence(lstm_out_packed,
                                                 batch_first=True)
-        # print('outputs_padded - 118 - type: {}'.format(type(outputs_padded)))
         
         outputs_padded = self.linear(outputs_padded)
-        # print('outputs_padded - 122 - type: {}'.format(type(outputs_padded)))
         
         return outputs_padded
 
     # greedy search
-    def predict(self, features, max_length, idx2word):
+#     def predict(self, features, max_length, idx2word):
+#         caption = []
+#         inputs = features.unsqueeze(0)
+
+#         for i in range(max_length):
+#             hiddens, states = self.lstm(inputs)
+#             outputs = self.linear(hiddens.squeeze(1))
+#             predicted = outputs.argmax(1)
+#             caption.append(predicted.item())
+#             inputs = self.embed(predicted)  # (batch_size, embed_size)
+#             inputs = inputs.unsqueeze(1)  # (batch_size, 1, embed_size)
+
+#             if idx2word[predicted.item()] == "<EOS>":
+#                 break
+
+#         return caption
+
+    # get prediction from features input, greedy search, take the argmax
+    def predict(self, features, word2idx, max_len=20, states=None):
         caption = []
-        inputs = features.unsqueeze(0)
-
-        for i in range(max_length):
-            hiddens, states = self.lstm(inputs)
-            outputs = self.linear(hiddens.squeeze(1))
-            predicted = outputs.argmax(1)
+        inputs = features
+        
+        for _ in range(max_len):
+            output, states = self.lstm(inputs, states)
+            output = self.linear(output)
+            _, predicted = output.max(2)
             caption.append(predicted.item())
-            inputs = self.embed(predicted)  # (batch_size, embed_size)
-            inputs = inputs.unsqueeze(1)  # (batch_size, 1, embed_size)
 
-            if idx2word[predicted.item()] == "<EOS>":
+            if predicted == word2idx['<EOS>']:
                 break
+
+            inputs = self.embed(predicted)
+            # features = features.unsqueeze(1)
 
         return caption
