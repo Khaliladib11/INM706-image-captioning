@@ -79,24 +79,9 @@ class Decoder(nn.Module):
 
         # self.init_weights()
 
-    def init_hidden(self, batch_size):
-        """ At the start of training, we need to initialize a hidden state;
-        there will be none because the hidden state is formed based on previously seen data.
-        So, this function defines a hidden state with all zeroes
-        The axes semantics are (num_layers, batch_size, hidden_dim)
-        """
-        return (torch.zeros((1, batch_size, self.hidden_size), device=self.device), \
-                torch.zeros((1, batch_size, self.hidden_size), device=self.device))
 
     def forward(self, features, captions):
-        """
-        embeddings = self.dropout(self.embed(captions))
-        features = features.unsqueeze(1)
-        embeddings = torch.cat((features, embeddings[:, :-1, :]), dim=1)
-        hiddens, _ = self.lstm(embeddings)
-        outputs = self.linear(hiddens)
-        return outputs
-        """
+
         captions = captions[:, :-1]
         captions = self.embed(captions)
         inputs = torch.cat((features.unsqueeze(1), captions), dim=1)
