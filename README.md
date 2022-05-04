@@ -16,10 +16,8 @@ pip install -r requirements.txt
 
 &nbsp;
 
-## Dataset
-You used MS COCO dataset 2017 version. you can dowload it fom their [website](https://cocodataset.org/#download).
-
-Or you can use the commad line. We recommand to follow our project folders structer, in the root open the terminal and type the following commands:
+## Project Structure
+We recommand to follow the project structure, in the root directory open new terminal and type the following commands:
 ```bash
 mkdir Datasets
 cd Datasets
@@ -27,8 +25,16 @@ mkdir coco
 cd coco
 mdkir images
 mkdir annotations
+cd ../..
+mkdir model
 ```
-After that you can start downloading:
+
+&nbsp;
+
+## Dataset
+You used MS COCO dataset 2017 version. you can dowload it fom their [website](https://cocodataset.org/#download).
+
+or you can use the terminal
 ```bash
 cd Datasets/coco/images
 wget http://images.cocodataset.org/zips/train2017.zip
