@@ -1,0 +1,8 @@
+torch
+torchvision
+numpy
+PIL
+pathlib
+nltk
+json
+re
