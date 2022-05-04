@@ -142,6 +142,9 @@ def plot_loss(training_loss, validation_loss):
     plt.plot(training_loss, label="Training Loss")
     plt.plot(validation_loss, label="Validation Loss")
     plt.legend(loc='upper right')
+    plt.title('Training vs Validation loss')
+    plt.xlabel('Epochs')
+    plt.ylabel('Loss')
     plt.show()
 
 
@@ -175,7 +178,7 @@ def predict(encoder, decoder, image, idx2word, word2idx, device):
     plt.imshow(image)
     plt.axis('off')
     plt.show()
-    print(result.strip())
+    #print(result.strip())
     return result.strip()
 
 

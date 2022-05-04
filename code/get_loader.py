@@ -29,18 +29,33 @@ class MSCOCODataset(data.Dataset):
                  idx2word=None,
                  word2idx=None
                  ):
+        """
+        Constructor for the dataset interface, inherited from torch.utils.data.Dataset
+
+        :param images_path: the path to the images folder
+        :param captions_path: path of caption file
+        :param freq_threshold: if a word is not repeated enough don't add it to the dictionary
+        :param caps_per_image: number of captions per image
+        :param mode: to specify in which mode
+        :param transform: torchvision.transforms object if there is a custom transform for images
+        :param idx2word: loaded idx2word vocab
+        :param word2idx: loaded word2idx vocab
+        """
 
         self.images_path = images_path
         self.captions_path = captions_path
         self.freq_threshold = freq_threshold
         self.caps_per_image = caps_per_image
         self.transform = transform
-
+        
+        
+        # initialize the COCO object
         self.coco = COCO(self.images_path, self.captions_path)
-
+        
+        # use fixed seed to select the same images each time
         random.seed(706)
 
-        assert mode in ['train', 'validation', 'test']
+        assert mode in ['train', 'validation', 'test'], "mode must be from ['train', 'validation', 'test']"
 
         # Training mode
         if mode == 'train':
@@ -64,8 +79,8 @@ class MSCOCODataset(data.Dataset):
             for img in imgs:
                 for cp in self.coco.imgs_caps_dict[img]:
                     caps.append(cp)
-            assert idx2word is not None
-            assert word2idx is not None
+            assert idx2word is not None, "You have to use loaded idx2word vocab to validated the model"
+            assert word2idx is not None, "You have to use loaded word2idx vocab to validated the model"
             self.vocab = Vocabulary(freq_threshold=self.freq_threshold, idx2word=idx2word, word2idx=word2idx)
 
         # test mode
@@ -76,19 +91,9 @@ class MSCOCODataset(data.Dataset):
             for img in imgs:
                 for cp in self.coco.imgs_caps_dict[img]:
                     caps.append(cp)
-            assert idx2word is not None
-            assert word2idx is not None
+            assert idx2word is not None, "You have to use loaded idx2word vocab to test the model"
+            assert word2idx is not None, "You have to use loaded word2idx vocab to test the model"
             self.vocab = Vocabulary(freq_threshold=self.freq_threshold, idx2word=idx2word, word2idx=word2idx)
-
-
-        """
-        self.coco = COCO(self.images_path, self.captions_path)
-        if idx2word is None and word2idx is None:
-            self.vocab = Vocabulary(freq_threshold=self.freq_threshold)
-            self.vocab.build_vocabulary(self.coco.captions_to_list())
-        else:
-            self.vocab = Vocabulary(freq_threshold=self.freq_threshold, idx2word=idx2word, word2idx=word2idx)
-        """
 
         # self.images = self.coco.images
         self.images = imgs
@@ -109,6 +114,7 @@ class MSCOCODataset(data.Dataset):
                 else:
                     break
 
+    # takes as input the image file name, return list of captions
     def get_captions(self, img_file_name) -> list:
         return self.coco.get_captions(img_file_name)
 
@@ -141,6 +147,13 @@ class MSCOCODataset(data.Dataset):
         else:
             img = self.transform(img)
         return img
+    
+    # method to return image as Image object
+    def get_img(self, idx) -> Image:
+        img_file_name = self.img_deque[idx][0]
+        # convert the image to RGB to make sure all the images are 3D, because there are some images in grayscale
+        img = Image.open(self.images_path + '/' + img_file_name).convert('RGB')
+        return img
 
     # method to convert list of idx to caps
     def idx_to_caption(self, idx):
@@ -167,6 +180,12 @@ class MSCOCODataset(data.Dataset):
 
 class PAD:
     def __init__(self, pad_idx):
+        """
+        Collate to deal with the different lengths of captions
+        This class make sure that in each batch, we take the biggest captions length and pad the others
+        This is better than use a fixed sequence length for all the captions in the batch
+        :param pad_idx: the index of <PAD> token
+        """
         self.pad_idx = pad_idx
 
     def __call__(self, batch):
@@ -179,6 +198,7 @@ class PAD:
         return idxs, imgs, targets
 
 
+# loader function to return the loader and the dataset interface
 def get_loader(
         images_path,
         captions_path,
