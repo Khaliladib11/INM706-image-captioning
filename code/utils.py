@@ -1,3 +1,5 @@
+import os.path
+
 import torch
 import torch.nn as nn
 import torch.utils.data as data
@@ -29,18 +31,23 @@ def load_vocab(idx2word_path, word2idx_path):
 
 # function to save the model
 def save_model(epoch, encoder, decoder, training_loss, validation_loss, checkpoint_path):
+    if not os.path.exists(checkpoint_path):
+        os.makedirs(checkpoint_path)
     torch.save({
         'epoch': epoch,
         'encoder_state_dict': encoder.state_dict(),
         'decoder_state_dict': decoder.state_dict(),
         'training_loss': training_loss,
         'validation_loss': validation_loss,
-    }, checkpoint_path)
+    }, os.path.join(checkpoint_path, 'model.pth'))
 
 
 # function to load a checkpoint
 def load_model(encoder, decoder, checkpoint_path):
-    checkpoint = torch.load(checkpoint_path)
+
+    assert os.path.exists(checkpoint_path), "File not found"
+
+    checkpoint = torch.load(os.path.join(checkpoint_path, 'model.pth'))
     encoder.load_state_dict(checkpoint['encoder_state_dict'])
     decoder.load_state_dict(checkpoint['decoder_state_dict'])
     epoch = checkpoint['epoch']
@@ -237,7 +244,10 @@ def plot_bleu_score_bar(b1_avg, b2_avg, b3_avg, b4_avg):
     plt.show()
 
 
-def save_params(path, batch_size, embed_size, hidden_size, num_layers, vocab_size):
+def save_params(save_path, batch_size, embed_size, hidden_size, num_layers, vocab_size):
+    if not os.path.exists(save_path):
+        os.makedirs(save_path)
+
     params = {
         'batch_size': batch_size,
         'embed_size': embed_size,
@@ -245,18 +255,20 @@ def save_params(path, batch_size, embed_size, hidden_size, num_layers, vocab_siz
         'num_layers': num_layers,
         'vocab_size': vocab_size
     }
-    with open(path, "w") as outfile:
+    with open(os.path.join(save_path, 'params.json'), "w") as outfile:
         json.dump(params, outfile)
 
 
-def load_params(path):
-    with open(path) as json_file:
+def load_params(params_path):
+    assert os.path.exists(params_path), "Folder not found"
+    with open(os.path.join(params_path, 'params.json')) as json_file:
         params = json.load(json_file)
     return params
 
 
 def load_model_losses(model_path):
-    checkpoint = torch.load(model_path)
+    assert os.path.exists(model_path), "Folder not found"
+    checkpoint = torch.load(os.path.join(model_path, 'model.pth'))
     training_loss = checkpoint['training_loss']
     validation_loss = checkpoint['validation_loss']
     return training_loss, validation_loss
