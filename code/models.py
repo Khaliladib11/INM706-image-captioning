@@ -103,7 +103,8 @@ class Decoder(nn.Module):
         outputs, _ = self.lstm(inputs)
         outputs = self.linear(outputs)
         return  outputs
-
+    
+    # greedy search
     def predict(self, features, word2idx, max_len=20, states=None):
         caption = []
         inputs = features
@@ -120,26 +121,4 @@ class Decoder(nn.Module):
             #features = features.unsqueeze(1)
 
         return caption
-
-
-
-    """
-    # greedy search
-    def predict(self, features, max_length, idx2word):
-        caption = []
-        inputs = features.unsqueeze(0)
-
-        for i in range(max_length):
-            hiddens, states = self.lstm(inputs)
-            outputs = self.linear(hiddens.squeeze(1))
-            predicted = outputs.argmax(1)
-            caption.append(predicted.item())
-            inputs = self.embed(predicted)  # (batch_size, embed_size)
-            inputs = inputs.unsqueeze(1)  # (batch_size, 1, embed_size)
-
-            if idx2word[predicted.item()] == "<EOS>":
-                break
-
-        return caption
-    """
 

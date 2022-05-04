@@ -10,8 +10,9 @@ class COCO:
     def __init__(self, images_path, captions_path):
         """
         Constructor of Microsoft COCO helper class for reading and visualizing annotations.
+        Mostly for preprocessing and preparing the data to be used later
         :param images_path (path): path of images folder
-        :param captions_path (path): path of captions file
+        :param captions_path (path): path of caption file
         """
         self.images_path = images_path
         self.captions_path = captions_path
@@ -19,9 +20,12 @@ class COCO:
         # load captions json file and put json['captions'] and json['images'] into attributes:
         self.captions, self.images = self._load_annotations()
 
+        # create dictionary for images
+        # where the image file name is the key and the corresponding captions are the item
         self.imgs_caps_dict = self._create_caption_dict()
-
-    def _load_annotations(self):
+    
+    # method to load the json annotations file and extract the useful information from it
+    def _load_annotations(self) -> list:
         # Opening JSON file
         with open(self.captions_path) as captions_json:
             # returns JSON object as
@@ -61,13 +65,14 @@ class COCO:
         return imgs_dict
 
     # method to return captions for a specific file
-    def get_captions(self, file_name):
+    def get_captions(self, file_name) -> list:
         assert file_name in self.imgs_caps_dict.keys(), "Can't find captions for this image"
         captions = self.imgs_caps_dict[file_name]
 
         return captions
-
-    def get_img(self, idx):
+    
+    # method to return Image object, takes as input the index of the image
+    def get_img(self, idx) -> Image:
         return Image.open(self.imgs_path / self.images[idx])
 
     '''
@@ -78,7 +83,7 @@ class COCO:
        in small datasets we can use list it won't be any problem, however with this dataset, my computer crached while trying to do that :)
        Stay safe and protect your machines
     '''
-    def captions_to_list(self):
+    def captions_to_list(self) -> deque:
         captions_deque = deque()
         for img_file_name in self.imgs_caps_dict:
             for cap in self.imgs_caps_dict[img_file_name]:
