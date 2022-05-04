@@ -173,12 +173,12 @@ def predict(encoder, decoder, image, idx2word, word2idx, device):
     result = ''
     for word in cap:
         result += word + ' '
-    
+
     result += '.'
     plt.imshow(image)
     plt.axis('off')
     plt.show()
-    #print(result.strip())
+    # print(result.strip())
     return result.strip()
 
 
@@ -187,12 +187,12 @@ def evaluate_bleu_score(encoder, decoder, loader, dataset, device):
     decoder.to(device)
     encoder.eval()
     decoder.eval()
-    
+
     b1_avg = 0
     b2_avg = 0
     b3_avg = 0
     b4_avg = 0
-    
+
     for id, batch in enumerate(loader):
         idx, image, caption = batch
         image = image.to(device)
@@ -206,31 +206,31 @@ def evaluate_bleu_score(encoder, decoder, loader, dataset, device):
 
         result += '.'
         hypo = result.strip()
-        
+
         references = dataset.get_captions(dataset.img_deque[idx[0]][0])
-        
+
         b1 = bleu_score.sentence_bleu(references, hypo, weights=(1.0, 0, 0, 0))
         b2 = bleu_score.sentence_bleu(references, hypo, weights=(0.5, 0.5, 0, 0))
-        b3 = bleu_score.sentence_bleu(references, hypo, weights=(1.0/3.0, 1.0/3.0, 1.0/3.0, 0))
+        b3 = bleu_score.sentence_bleu(references, hypo, weights=(1.0 / 3.0, 1.0 / 3.0, 1.0 / 3.0, 0))
         b4 = bleu_score.sentence_bleu(references, hypo, weights=(0.25, 0.25, 0.25, 0.25))
-        
+
         b1_avg += round(b1, 3)
         b2_avg += round(b2, 3)
         b3_avg += round(b3, 3)
         b4_avg += round(b4, 3)
-    
+
     b1_avg = b1_avg / len(loader)
     b2_avg = b2_avg / len(loader)
     b3_avg = b3_avg / len(loader)
     b4_avg = b4_avg / len(loader)
-    
+
     return b1_avg, b2_avg, b3_avg, b4_avg
 
 
 def plot_bleu_score_bar(b1_avg, b2_avg, b3_avg, b4_avg):
     x = np.array(["B1", "B2", "B3", "B4"])
     y = np.array([b1_avg, b2_avg, b3_avg, b4_avg])
-    plt.bar(x,y)
+    plt.bar(x, y)
     plt.xlabel('BLEU')
     plt.ylabel('SCORES')
     plt.title("BLEU scores")
@@ -248,8 +248,61 @@ def save_params(path, batch_size, embed_size, hidden_size, num_layers, vocab_siz
     with open(path, "w") as outfile:
         json.dump(params, outfile)
 
-        
+
 def load_params(path):
     with open(path) as json_file:
         params = json.load(json_file)
     return params
+
+
+def load_model_losses(model_path):
+    checkpoint = torch.load(model_path)
+    training_loss = checkpoint['training_loss']
+    validation_loss = checkpoint['validation_loss']
+    return training_loss, validation_loss
+
+
+def load_models_losses(model_paths):
+    training_losses = []
+    validation_losses = []
+    for model_path in model_paths:
+        training_loss, validation_loss = load_model_losses(model_path)
+        training_losses.append(training_loss)
+        validation_losses.append(validation_loss)
+
+    return training_losses, validation_losses
+
+
+def compare_models_losses(model_paths):
+    training_losses, validation_losses = load_models_losses(model_paths)
+    color_map = ['r', 'b', 'y', 'g']
+    plt.figure()
+    fig, axis = plt.subplots(1, 2, figsize=(15, 5))
+    for i in range(len(training_losses)):
+        axis[0].plot(training_losses[i], color_map[i], label=f"Model {i + 1}")
+        axis[1].plot(validation_losses[i], color_map[i], label=f"Model {i + 1}")
+
+    axis[0].set_xlabel('Epochs')
+    axis[0].set_ylabel('Loss')
+    axis[0].set_title("Training Loss")
+    axis[0].legend(loc="upper right")
+
+    axis[1].set_xlabel('Loss')
+    axis[1].set_ylabel('Epochs')
+    axis[1].set_title("Validation Loss")
+    axis[1].legend(loc="upper right")
+
+    plt.show()
+
+
+def comparing_bleu_scores(bleu_scores):
+    x = ["B1", "B2", "B3", "B4"]
+    x_axis = np.arange(len(x))
+    plt.figure()
+    plt.bar(x_axis - 0.1 * len(bleu_scores), bleu_scores[0], 0.2 * len(bleu_scores), label=f'Model 1')
+    plt.bar(x_axis + 0.1 * len(bleu_scores), bleu_scores[1], 0.2 * len(bleu_scores), label=f'Model 2')
+    plt.xlabel("Bleu Scores")
+    plt.ylabel("Scores")
+    plt.title("Comparing Bleu scores of different models")
+    plt.legend(loc="upper right")
+    plt.show()
