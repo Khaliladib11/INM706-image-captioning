@@ -123,8 +123,8 @@ def train(encoder, decoder, criterion, optimizer, train_loader, val_loader, tota
             loss = criterion(outputs.view(-1, decoder.vocab_size), captions.contiguous().view(-1))
             val_epoch_loss += loss.item()
             if i % print_every == 0:
-                state = "Epoch: {:15} || Step: {:15} || Average Training Loss: {:.4f}".format('[{:d}/{:d}]'.format(epoch,total_epoch),
-                                                                                              '[{:d}/{:d}]'.formati,len(val_loader),
+                state = "Epoch: {:15} || Step: {:15} || Average Validation Loss: {:.4f}".format('[{:d}/{:d}]'.format(epoch,total_epoch),
+                                                                                              '[{:d}/{:d}]'.format(i,len(val_loader)),
                                                                                                val_epoch_loss / (i + 1))
                 print(state)
                 file.write(state+'\n')
