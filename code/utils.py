@@ -15,16 +15,25 @@ from PIL import Image
 from nltk.translate import bleu_score
 
 
-def load_vocab(idx2word_path, word2idx_path):
-    with open(idx2word_path) as json_file:
-        idx_to_string_json = json.load(json_file)
-
-    idx_to_string = dict()
-    for key in idx_to_string_json:
-        idx_to_string[int(key)] = idx_to_string_json[key]
-
+def load_vocab(idx2word_path=None, # leaving this for backwards compatibility but don't need it
+               word2idx_path):
+    
     with open(word2idx_path) as json_file:
         string_to_index = json.load(json_file)
+    
+    if idx2word is None:
+        idx_to_string = dict(zip(string_to_index.values(),
+                                 strint_to_index.keys()))
+    
+    else:
+        # below is a less efficient way of loading the vocab and vocab may not exist
+        print("it is prefered to just set word2idx_path and leave idx2word_path = None")
+        with open(idx2word_path) as json_file:
+            idx_to_string_json = json.load(json_file)
+
+        idx_to_string = dict()
+        for key in idx_to_string_json:
+            idx_to_string[int(key)] = idx_to_string_json[key]
 
     return idx_to_string, string_to_index
 
