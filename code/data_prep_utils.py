@@ -1,19 +1,18 @@
-from Vocabulary import Vocabulary
+from vocabulary import Vocabulary
 import json
 from pathlib import Path
 import numpy as np
 
 
-def build_vocab(freq_threshold=2, 
-                # sequence_length=40,
-                captions_file='captions_train2017.json'):
+def build_vocab(freq_threshold=5, 
+                captions_file='captions_train2017.json',
+                vocab_save_name=''):
     """build a vocabulary using any captions json file we want.
     This enables us to build vocab independent of the test set we are loading in for training for examle.
     
     freq_threshold: integer. Only words occuring equal to or more than the threshold are included in vocab.
-    sequence_length: truncate captions at number of words = sequence length for building vocab. We should set
-                     this as a high number - 40 is fine.
-                     
+    vocab_save_name: string. Root for word2idx.json file which we save.
+
     When building vocab with full captions_train2017.json file, we found that adjusting the freq threshold
     gave vocabs of the following size:
     
@@ -26,11 +25,11 @@ def build_vocab(freq_threshold=2,
         
     Setting freq_threshold at 2 is probably fine, but setting higher has the above effect on vocab size.
     
-    This function returns none but saves the vocab.idx_to_string and vocab.string_to_idx attributes
-    as json files with name idx_to_string.json and string_to_index.json in the vocabulary folder
+    This function returns none but saves the vocab.idx and vocab.word2idx attributes
+    as json files with name idx2word.json and word2idx.json in the vocabulary folder
     """
-    anns_path = Path('Datasets/coco/annotations/')
-    vocab_path = Path('vocabulary/')
+    anns_path = Path('../Datasets/coco/annotations/')
+    vocab_path = Path('../vocabulary/')
 
     if isinstance(captions_file, list):
         annotations = []
@@ -52,28 +51,30 @@ def build_vocab(freq_threshold=2,
     vocab.build_vocabulary(captions)
 
     print("With FREQ_THRESHOLD = {}, vocab size is {}"
-          .format(freq_threshold, len(vocab.idx_to_string)))
+          .format(freq_threshold, len(vocab.idx2word)))
     
-    with open(vocab_path/'word2idx.json', 'w') as f:
-        json.dump(vocab.string_to_index, f)
+    with open(vocab_path/f'{vocab_save_name}word2idx.json', 'w') as f:
+        json.dump(vocab.word2idx, f)
         
     return None
 
 def prepare_datasets(train_percent = 0.87, super_categories=None,
-                    max_train=15000, max_val=3000, max_test=3000):
+                    max_train=15000, max_val=3000, max_test=3000,
+                    save_name=None, random_seed=42):
     """Prepare train/val/test datasets for training.
     Can reduce size of data by only picking certain super_categories - e.g. sports. This will 
     select only images that contain listed super_categories.
     
     train_percent, float. between 0 and 1. How to split eligible images between train and val.
     super_categories, list. If None then selects all data
+    save_name, string or None. If string then files will be saved as [save_name]_captions_train.json etc
 
     This function is a bit messy as it was converted from a Jupyter Notebook    
     """
     
-    annotations_folder = Path(r'Datasets/coco/annotations')
-    image_folder = Path(r'Datasets/coco/images/train2017')
-    image_folder_test = Path(r'Datasets/coco/images/val2017')
+    annotations_folder = Path(r'../Datasets/coco/annotations')
+    image_folder = Path(r'../Datasets/coco/images/train2017')
+    image_folder_test = Path(r'../Datasets/coco/images/val2017')
     
     STAGE = 'train'
     TRAIN_PCT = train_percent
@@ -108,24 +109,28 @@ def prepare_datasets(train_percent = 0.87, super_categories=None,
     
     img_list = [] # images we will choose for our data set
     full_img_list = [int(f.stem) for f in image_folder.glob('**/*')] # all images in the train2017 set
-    annotations = [] # list of annotations that we will use. 
+    # annotations = [] # list of annotations that we will use. 
     for d in instances['annotations']:
         if d['category_id'] in ids:
             img_list.append(d['image_id'])
-            annotations.append(d)
-    img_list = list(set(img_list))
+            # annotations.append(d)
+    img_list = list(set(img_list)) # removes repeated images
     
-    rng = np.random.default_rng(42)
+    # randomly sample images for our training set
+    rng = np.random.default_rng(random_seed)
     imgs_train = rng.choice(img_list,
                             size =int(TRAIN_PCT * len(img_list)),
                             replace=False)
+    # randomly sample from remaining images for our val set
     imgs_val = list(set(img_list).difference(set(imgs_train)))
 
+    # reduce size of data if we have set smaller max sizes
     if len(imgs_train > max_train):
         imgs_train = imgs_train[:max_train]
     if len(imgs_val) > max_val:
         imgs_val = imgs_val[:max_val]
 
+    # rebuild ditionaries in same format as captions2017.json just with our selected data
     captions_full = dict(zip(full_img_list, 
                              [[] for _ in range(len(full_img_list))]))
     images_dict = dict(zip(full_img_list, 
@@ -165,6 +170,10 @@ def prepare_datasets(train_percent = 0.87, super_categories=None,
 
     val_img_paths = {'image_paths': [image_folder/(str(id).zfill(12) + '.jpg')
                                        for id in imgs_val]}
+    
+    
+    # The code below repeats what was done above. It is an inefficient implementation as it could ahve been
+    # wrapped as a function and called twice. TODO: refactor code to make more concise.
     
     STAGE = 'val' # we are using coco validation set for our test set
     instances_file = annotations_folder/f'instances_{STAGE}2017.json'
@@ -209,11 +218,16 @@ def prepare_datasets(train_percent = 0.87, super_categories=None,
     test_img_paths = {'image_paths': [image_folder_test/(str(id).zfill(12) + '.jpg')
                                        for id in img_list_test]}
     
-    save_files = {'custom_captions_train': new_captions_train,
-                  'custom_captions_val': new_captions_val,
-                  'custom_captions_test': new_captions_test,
+    if save_name:
+        name = save_name + '_captions_'
+    else:
+        name = 'custom_captions_'
+    save_files = {f'{name}train': new_captions_train,
+                  f'{name}val': new_captions_val,
+                  f'{name}test': new_captions_test,
                  }
 
+    # Save files to new json files
     for key, val in save_files.items():
         with open(annotations_folder/f'{key}.json', 'w') as json_file:
             json.dump(val, json_file)
