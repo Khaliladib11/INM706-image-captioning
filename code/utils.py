@@ -313,6 +313,8 @@ def comparing_bleu_scores(bleu_scores):
     plt.figure()
     plt.bar(x_axis - 0.1 * len(bleu_scores), bleu_scores[0], 0.2 * len(bleu_scores), label=f'Model 1')
     plt.bar(x_axis + 0.1 * len(bleu_scores), bleu_scores[1], 0.2 * len(bleu_scores), label=f'Model 2')
+
+    plt.xticks(x_axis, x)
     plt.xlabel("Bleu Scores")
     plt.ylabel("Scores")
     plt.title("Comparing Bleu scores of different models")
