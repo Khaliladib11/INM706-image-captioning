@@ -60,13 +60,15 @@ def build_vocab(freq_threshold=2,
     return None
 
 def prepare_datasets(train_percent = 0.87, super_categories=None,
-                    max_train=15000, max_val=3000, max_test=3000):
+                    max_train=15000, max_val=3000, max_test=3000,
+                    save_name=None, random_seed=42):
     """Prepare train/val/test datasets for training.
     Can reduce size of data by only picking certain super_categories - e.g. sports. This will 
     select only images that contain listed super_categories.
     
     train_percent, float. between 0 and 1. How to split eligible images between train and val.
     super_categories, list. If None then selects all data
+    save_name, string or None. If string then files will be saved as [save_name]_captions_train.json etc
 
     This function is a bit messy as it was converted from a Jupyter Notebook    
     """
@@ -108,24 +110,28 @@ def prepare_datasets(train_percent = 0.87, super_categories=None,
     
     img_list = [] # images we will choose for our data set
     full_img_list = [int(f.stem) for f in image_folder.glob('**/*')] # all images in the train2017 set
-    annotations = [] # list of annotations that we will use. 
+    # annotations = [] # list of annotations that we will use. 
     for d in instances['annotations']:
         if d['category_id'] in ids:
             img_list.append(d['image_id'])
-            annotations.append(d)
-    img_list = list(set(img_list))
+            # annotations.append(d)
+    img_list = list(set(img_list)) # removes repeated images
     
-    rng = np.random.default_rng(42)
+    # randomly sample images for our training set
+    rng = np.random.default_rng(random_seed)
     imgs_train = rng.choice(img_list,
                             size =int(TRAIN_PCT * len(img_list)),
                             replace=False)
+    # randomly sample from remaining images for our val set
     imgs_val = list(set(img_list).difference(set(imgs_train)))
 
+    # reduce size of data if we have set smaller max sizes
     if len(imgs_train > max_train):
         imgs_train = imgs_train[:max_train]
     if len(imgs_val) > max_val:
         imgs_val = imgs_val[:max_val]
 
+    # rebuild ditionaries in same format as captions2017.json just with our selected data
     captions_full = dict(zip(full_img_list, 
                              [[] for _ in range(len(full_img_list))]))
     images_dict = dict(zip(full_img_list, 
@@ -165,6 +171,10 @@ def prepare_datasets(train_percent = 0.87, super_categories=None,
 
     val_img_paths = {'image_paths': [image_folder/(str(id).zfill(12) + '.jpg')
                                        for id in imgs_val]}
+    
+    
+    # The code below repeats what was done above. It is an inefficient implementation as it could ahve been
+    # wrapped as a function and called twice. TODO: refactor code to make more concise.
     
     STAGE = 'val' # we are using coco validation set for our test set
     instances_file = annotations_folder/f'instances_{STAGE}2017.json'
@@ -209,11 +219,16 @@ def prepare_datasets(train_percent = 0.87, super_categories=None,
     test_img_paths = {'image_paths': [image_folder_test/(str(id).zfill(12) + '.jpg')
                                        for id in img_list_test]}
     
-    save_files = {'custom_captions_train': new_captions_train,
-                  'custom_captions_val': new_captions_val,
-                  'custom_captions_test': new_captions_test,
+    if save_name:
+        name = save_name + '_captions_'
+    else:
+        name = 'custom_captions_'
+    save_files = {f'{name}train': new_captions_train,
+                  f'{name}val': new_captions_val,
+                  f'{name}test': new_captions_test,
                  }
 
+    # Save files to new json files
     for key, val in save_files.items():
         with open(annotations_folder/f'{key}.json', 'w') as json_file:
             json.dump(val, json_file)
