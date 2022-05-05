@@ -21,7 +21,7 @@ def load_vocab(idx2word_path=None, # leaving this for backwards compatibility bu
     with open(word2idx_path) as json_file:
         string_to_index = json.load(json_file)
     
-    if idx2word is None:
+    if idx2word_path is None:
         idx_to_string = dict(zip(string_to_index.values(),
                                  strint_to_index.keys()))
     
