@@ -15,15 +15,16 @@ from PIL import Image
 from nltk.translate import bleu_score
 
 
-def load_vocab(idx2word_path=None, # leaving this for backwards compatibility but don't need it
-               word2idx_path):
+def load_vocab(word2idx_path,
+               idx2word_path=None # leaving this for backwards compatibility but don't need it
+               ):
     
     with open(word2idx_path) as json_file:
         string_to_index = json.load(json_file)
     
     if idx2word_path is None:
         idx_to_string = dict(zip(string_to_index.values(),
-                                 strint_to_index.keys()))
+                                 string_to_index.keys()))
     
     else:
         # below is a less efficient way of loading the vocab and vocab may not exist
