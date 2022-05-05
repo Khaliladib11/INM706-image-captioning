@@ -70,6 +70,7 @@ def train(encoder, decoder, criterion, optimizer, train_loader, val_loader, tota
     encoder.to(device)
     decoder.to(device)
 
+    file = open(os.path.join(checkpoint_path, "outputs.txt"), "a")
     for epoch in range(e, total_epoch):
 
         start_time = time.time()
@@ -81,7 +82,7 @@ def train(encoder, decoder, criterion, optimizer, train_loader, val_loader, tota
         encoder.train()
         decoder.train()
 
-        for id, batch in enumerate(train_loader):
+        for i, batch in enumerate(train_loader):
             idx, images, captions = batch
             images, captions = images.to(device), captions.to(device)
 
@@ -99,13 +100,13 @@ def train(encoder, decoder, criterion, optimizer, train_loader, val_loader, tota
 
             train_epoch_loss += loss.item()
 
-            if id % print_every == 0:
-                print("Epoch: [{0:d}/{1:d}] || Step: [{2:d}/{3:d}] || Average Training Loss: {4:.4f}".format(epoch,
-                                                                                                             total_epoch,
-                                                                                                             id,
-                                                                                                             len(train_loader),
-                                                                                                             train_epoch_loss / (
-                                                                                                                     id + 1)))
+            if i % print_every == 0:
+                state = "Epoch: {:15} || Step: {:15} || Average Training Loss: {:.4f}".format('[{:d}/{:d}]'.format(epoch,total_epoch),
+                                                                                              '[{:d}/{:d}]'.format(i,len(train_loader)),
+                                                                                               train_epoch_loss / (i + 1))
+                print(state)
+                file.write(state+ '\n')
+                file.flush()
 
         train_epoch_loss /= len(train_loader)
         training_loss.append(train_epoch_loss)
@@ -114,20 +115,20 @@ def train(encoder, decoder, criterion, optimizer, train_loader, val_loader, tota
         encoder.eval()
         decoder.eval()
 
-        for id, batch in enumerate(val_loader):
+        for i, batch in enumerate(val_loader):
             idx, images, captions = batch
             images, captions = images.to(device), captions.to(device)
             features = encoder(images)
             outputs = decoder(features, captions)
             loss = criterion(outputs.view(-1, decoder.vocab_size), captions.contiguous().view(-1))
             val_epoch_loss += loss.item()
-            if id % print_every == 0:
-                print("Epoch: [{0:d}/{1:d}] || Step: [{2:d}/{3:d}] || Average Validation Loss: {4:.4f}".format(epoch,
-                                                                                                               total_epoch,
-                                                                                                               id,
-                                                                                                               len(val_loader),
-                                                                                                               val_epoch_loss / (
-                                                                                                                       id + 1)))
+            if i % print_every == 0:
+                state = "Epoch: {:15} || Step: {:15} || Average Training Loss: {:.4f}".format('[{:d}/{:d}]'.format(epoch,total_epoch),
+                                                                                              '[{:d}/{:d}]'.formati,len(val_loader),
+                                                                                               val_epoch_loss / (i + 1))
+                print(state)
+                file.write(state+'\n')
+                file.flush()
 
         val_epoch_loss /= len(val_loader)
         validation_loss.append(val_epoch_loss)
@@ -135,11 +136,17 @@ def train(encoder, decoder, criterion, optimizer, train_loader, val_loader, tota
         epoch_time = (time.time() - start_time) / 60 ** 1
 
         save_model(epoch, encoder, decoder, training_loss, validation_loss, checkpoint_path)
+        state = "Epoch: [{0:d}/{1:d}] || Training Loss = {2:.2f} || Validation Loss: {3:.2f} || Time: {4:f}" \
+                .format(epoch, total_epoch, train_epoch_loss, val_epoch_loss, epoch_time)
+        file.write(100*"*" + '\n')
+        file.write(state+ '\n')
+        file.write(100*"*" + '\n')
+        file.flush()
         print("*" * 100)
-        print(
-            "Epoch: [{0:d}/{1:d}] || Training Loss = {2:.2f} || Validation Loss: {3:.2f} || Time: {4:f}" \
-                .format(epoch, total_epoch, train_epoch_loss, val_epoch_loss, epoch_time))
+        print(state)
         print("*" * 100)
+
+    file.close()
 
     return training_loss, validation_loss
 
