@@ -1,19 +1,18 @@
-from Vocabulary import Vocabulary
+from vocabulary import Vocabulary
 import json
 from pathlib import Path
 import numpy as np
 
 
-def build_vocab(freq_threshold=2, 
-                # sequence_length=40,
-                captions_file='captions_train2017.json'):
+def build_vocab(freq_threshold=5, 
+                captions_file='captions_train2017.json',
+                vocab_save_name=''):
     """build a vocabulary using any captions json file we want.
     This enables us to build vocab independent of the test set we are loading in for training for examle.
     
     freq_threshold: integer. Only words occuring equal to or more than the threshold are included in vocab.
-    sequence_length: truncate captions at number of words = sequence length for building vocab. We should set
-                     this as a high number - 40 is fine.
-                     
+    vocab_save_name: string. Root for word2idx.json file which we save.
+
     When building vocab with full captions_train2017.json file, we found that adjusting the freq threshold
     gave vocabs of the following size:
     
@@ -26,11 +25,11 @@ def build_vocab(freq_threshold=2,
         
     Setting freq_threshold at 2 is probably fine, but setting higher has the above effect on vocab size.
     
-    This function returns none but saves the vocab.idx_to_string and vocab.string_to_idx attributes
-    as json files with name idx_to_string.json and string_to_index.json in the vocabulary folder
+    This function returns none but saves the vocab.idx and vocab.word2idx attributes
+    as json files with name idx2word.json and word2idx.json in the vocabulary folder
     """
-    anns_path = Path('Datasets/coco/annotations/')
-    vocab_path = Path('vocabulary/')
+    anns_path = Path('../Datasets/coco/annotations/')
+    vocab_path = Path('../vocabulary/')
 
     if isinstance(captions_file, list):
         annotations = []
@@ -52,10 +51,10 @@ def build_vocab(freq_threshold=2,
     vocab.build_vocabulary(captions)
 
     print("With FREQ_THRESHOLD = {}, vocab size is {}"
-          .format(freq_threshold, len(vocab.idx_to_string)))
+          .format(freq_threshold, len(vocab.idx2word)))
     
-    with open(vocab_path/'word2idx.json', 'w') as f:
-        json.dump(vocab.string_to_index, f)
+    with open(vocab_path/f'{vocab_save_name}word2idx.json', 'w') as f:
+        json.dump(vocab.word2idx, f)
         
     return None
 
@@ -73,9 +72,9 @@ def prepare_datasets(train_percent = 0.87, super_categories=None,
     This function is a bit messy as it was converted from a Jupyter Notebook    
     """
     
-    annotations_folder = Path(r'Datasets/coco/annotations')
-    image_folder = Path(r'Datasets/coco/images/train2017')
-    image_folder_test = Path(r'Datasets/coco/images/val2017')
+    annotations_folder = Path(r'../Datasets/coco/annotations')
+    image_folder = Path(r'../Datasets/coco/images/train2017')
+    image_folder_test = Path(r'../Datasets/coco/images/val2017')
     
     STAGE = 'train'
     TRAIN_PCT = train_percent

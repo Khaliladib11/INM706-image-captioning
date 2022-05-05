@@ -26,7 +26,7 @@ class MSCOCODataset(data.Dataset):
                  caps_per_image,
                  mode='train',
                  transform=None,
-                 idx2word=None,
+                 idx2word=None, # here for backwards compatibility. We don't need it
                  word2idx=None
                  ):
         """
@@ -48,7 +48,6 @@ class MSCOCODataset(data.Dataset):
         self.caps_per_image = caps_per_image
         self.transform = transform
         
-        
         # initialize the COCO object
         self.coco = COCO(self.images_path, self.captions_path)
         
@@ -56,47 +55,54 @@ class MSCOCODataset(data.Dataset):
         random.seed(706)
 
         assert mode in ['train', 'validation', 'test'], "mode must be from ['train', 'validation', 'test']"
+        assert word2idx is not None, "You have to use loaded word2idx vocab to train the model"
 
-        # Training mode
-        if mode == 'train':
-            # take random 10_000 images from the first 20_000 images
-            imgs = deque(random.sample(self.coco.images[:20_000], 10_000))
-            caps = []
-            for img in imgs:
-                for cp in self.coco.imgs_caps_dict[img]:
-                    caps.append(cp)
-            if idx2word is None and word2idx is None:
-                self.vocab = Vocabulary(freq_threshold=self.freq_threshold)
-                self.vocab.build_vocabulary(caps)
-            else:
-                self.vocab = Vocabulary(freq_threshold=self.freq_threshold, idx2word=idx2word, word2idx=word2idx)
+        self.word2idx = word2idx
+        self.idx2word = dict(zip(word2idx.values(), word2idx.keys()))
+        
+#         # Training mode
+#         if mode == 'train':
+#             # take random 10_000 images from the first 20_000 images
+#             imgs = deque(random.sample(self.coco.images[:20_000], 10_000))
+#             caps = []
+#             for img in imgs:
+#                 for cp in self.coco.imgs_caps_dict[img]:
+#                     caps.append(cp)
+#             if idx2word is None and word2idx is None:
+#                 self.vocab = Vocabulary(freq_threshold=self.freq_threshold)
+#                 self.vocab.build_vocabulary(caps)
+#             else:
+#                 self.vocab = Vocabulary(freq_threshold=self.freq_threshold, idx2word=idx2word, word2idx=word2idx)
 
-        # validation mode
-        elif mode == 'validation':
-            # take random 2_000 images from the images between 20_001 and 25_000
-            imgs = deque(random.sample(self.coco.images[20_001:25_000], 2_000))
-            caps = []
-            for img in imgs:
-                for cp in self.coco.imgs_caps_dict[img]:
-                    caps.append(cp)
-            assert idx2word is not None, "You have to use loaded idx2word vocab to validated the model"
-            assert word2idx is not None, "You have to use loaded word2idx vocab to validated the model"
-            self.vocab = Vocabulary(freq_threshold=self.freq_threshold, idx2word=idx2word, word2idx=word2idx)
+#         # validation mode
+#         elif mode == 'validation':
+#             # take random 2_000 images from the images between 20_001 and 25_000
+#             imgs = deque(random.sample(self.coco.images[20_001:25_000], 2_000))
+#             caps = []
+#             for img in imgs:
+#                 for cp in self.coco.imgs_caps_dict[img]:
+#                     caps.append(cp)
+#             assert idx2word is not None, "You have to use loaded idx2word vocab to validated the model"
+#             assert word2idx is not None, "You have to use loaded word2idx vocab to validated the model"
+#             self.vocab = Vocabulary(freq_threshold=self.freq_threshold, idx2word=idx2word, word2idx=word2idx)
 
-        # test mode
-        elif mode == 'test':
-            # take random 2_000 images from the images between 25_001 and 30_000
-            imgs = deque(random.sample(self.coco.images[25_001:30_001], 2_000))
-            caps = []
-            for img in imgs:
-                for cp in self.coco.imgs_caps_dict[img]:
-                    caps.append(cp)
-            assert idx2word is not None, "You have to use loaded idx2word vocab to test the model"
-            assert word2idx is not None, "You have to use loaded word2idx vocab to test the model"
-            self.vocab = Vocabulary(freq_threshold=self.freq_threshold, idx2word=idx2word, word2idx=word2idx)
+#         # test mode
+#         elif mode == 'test':
+#             # take random 2_000 images from the images between 25_001 and 30_000
+#             imgs = deque(random.sample(self.coco.images[25_001:30_001], 2_000))
+#             caps = []
+#             for img in imgs:
+#                 for cp in self.coco.imgs_caps_dict[img]:
+#                     caps.append(cp)
+#             assert idx2word is not None, "You have to use loaded idx2word vocab to test the model"
+#             assert word2idx is not None, "You have to use loaded word2idx vocab to test the model"
+#             self.vocab = Vocabulary(freq_threshold=self.freq_threshold, idx2word=idx2word, word2idx=word2idx)
 
         # self.images = self.coco.images
-        self.images = imgs
+        self.images = self.coco.images
+        self.vocab = Vocabulary(freq_threshold=self.freq_threshold,
+                                idx2word=self.idx2word,
+                                word2idx=self.word2idx)
         self.__create_data_deque()
 
     # method to create the list deque of imgs and captions according to the number of caption per image
@@ -208,7 +214,7 @@ def get_loader(
         transform=None,
         batch_size=32,
         shuffle=True,
-        idx2word=None,
+        idx2word=None, # not needed, just keeping for backward compatibility
         word2idx=None):
 
     if mode == 'test':
