@@ -396,13 +396,7 @@ def evaluate_bleu_score2(encoder, decoder, loader, dataset, device):
         features = encoder(image).unsqueeze(1)
         outputs = decoder.predict(features, dataset.vocab.word2idx, 20)
         cap = [dataset.vocab.idx2word[word] for word in outputs]
-        cap = cap[1:-1]
-        result = ''
-        for word in cap:
-            result += word + ' '
-
-        # result += '.'
-        hypo = result.strip().lower().split()
+        hypo = cap[1:-1]
 
         references = dataset.get_captions(dataset.img_deque[idx[0]][0])
         references = [ref.strip().lower().split() for ref in references]
