@@ -24,11 +24,16 @@ class BeamSearch():
         self.decoder = decoder
         self.features = features
         self.word2idx = word2idx
+        self.batch_size = 1
         
-        self.h = decoder.init_hidden(features)[0]
-        self.c = decoder.init_hidden(features)[1]
+        self.h = torch.zeros((decoder.num_layers,
+                              self.batch_size,
+                              decoder.hidden_size))  #, device=decoder.device)
+        self.c = torch.zeros((decoder.num_layers,
+                              self.batch_size,
+                              decoder.hidden_size))  #, device=decoder.device)
         
-        self.start_idx = torch.zeros(1, dtype=torch.double)
+        self.start_idx = torch.zeros(1, dtype=torch.long)
         self.start_score = torch.Tensor([0.0] * k)
         
         # hidden states on the first step for a single word
@@ -52,10 +57,13 @@ class BeamSearch():
             c = hidden_states[1]
             
             # scoring stays with the same dimensions
+            print(w)
+            print(w.view(-1))
+            print(type(w))
             embedded_word = self.decoder.embed(w.view(-1)) # w.view(-1) stretches out the words into 1 dim.
             # input_concat shape at time step t = (batch, embedding_dim + hidden_dim)
             
-            h, c = self.decoder.lstm(embedded_word, (h, c))
+            h, c = self.decoder.lstm(embedded_word.unsqueeze(0), (h, c))
             output = self.decoder.linear(h)
             scoring = F.log_softmax(output, dim=1)
             top_scores, top_idx = scoring[0].topk(self.k)
@@ -100,7 +108,10 @@ class BeamSearch():
     def get_ready_idx(self, top_cum_scores, top_idx_temp, cum_score):
         """Obtain a list of ready indices and their positions"""
         # got the list of top positions 
+        print(cum_score)
+        print(top_cum_scores)
         tensor_positions = [torch.where(cum_score == top_cum_scores[i]) for i in range(self.k)]
+        print(tensor_positions)
         # it's important to sort the tensor_positions by first entries (rows)
         # because rows represent the sequences: 0, 1 or 2 sequences
         tensor_positions = sorted(tensor_positions, key = lambda x: x[0])

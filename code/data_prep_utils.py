@@ -39,7 +39,7 @@ def build_vocab(freq_threshold=5,
     else:
         with open(anns_path/captions_file, 'r') as f:
             annotations = json.load(f)['annotations']
-# 
+
     print(f"There are {len(annotations)} captions in the data set")
     
     vocab = Vocabulary(freq_threshold, 
@@ -99,8 +99,7 @@ def prepare_datasets(train_percent = 0.87, super_categories=None,
     
     ids = [] # build list of categories that come under our super categories
     id_dict = {} # build dict with image ids as keys and name as values.
-    # id_to_name = dict(zip([cat['id'] for cat in instances['categories']],
-    #                      [cat['name'] for cat in instances['categories']]))
+
     for d in instances['categories']:
         if d['supercategory'] in supers:
             ids.append(d['id'])
@@ -109,7 +108,6 @@ def prepare_datasets(train_percent = 0.87, super_categories=None,
     
     img_list = [] # images we will choose for our data set
     full_img_list = [int(f.stem) for f in image_folder.glob('**/*')] # all images in the train2017 set
-    # annotations = [] # list of annotations that we will use. 
     for d in instances['annotations']:
         if d['category_id'] in ids:
             img_list.append(d['image_id'])
@@ -188,7 +186,6 @@ def prepare_datasets(train_percent = 0.87, super_categories=None,
     full_img_list_test = [int(f.stem) for f in image_folder_test.glob('**/*')]
     annotations_test = []
     for d in instances_test['annotations']:
-        # full_img_list.append(d['image_id'])
         if d['category_id'] in ids:
             img_list_test.append(d['image_id'])
             annotations_test.append(d)
