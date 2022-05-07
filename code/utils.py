@@ -1,4 +1,6 @@
 import os.path
+from pathlib import Path
+from typing import Union
 
 import torch
 import torch.nn as nn
@@ -15,16 +17,26 @@ from PIL import Image
 from nltk.translate import bleu_score
 
 
-def load_vocab(idx2word_path, word2idx_path):
-    with open(idx2word_path) as json_file:
-        idx_to_string_json = json.load(json_file)
-
-    idx_to_string = dict()
-    for key in idx_to_string_json:
-        idx_to_string[int(key)] = idx_to_string_json[key]
-
+def load_vocab(word2idx_path,
+               idx2word_path=None # leaving this for backwards compatibility but don't need it
+               ):
+    
     with open(word2idx_path) as json_file:
         string_to_index = json.load(json_file)
+    
+    if idx2word_path is None:
+        idx_to_string = dict(zip(string_to_index.values(),
+                                 string_to_index.keys()))
+    
+    else:
+        # below is a less efficient way of loading the vocab and vocab may not exist
+        print("it is prefered to just set word2idx_path and leave idx2word_path = None")
+        with open(idx2word_path) as json_file:
+            idx_to_string_json = json.load(json_file)
+
+        idx_to_string = dict()
+        for key in idx_to_string_json:
+            idx_to_string[int(key)] = idx_to_string_json[key]
 
     return idx_to_string, string_to_index
 
@@ -82,7 +94,7 @@ def train(encoder, decoder, criterion, optimizer, train_loader, val_loader, tota
         encoder.train()
         decoder.train()
 
-        for id, batch in enumerate(train_loader):
+        for i, batch in enumerate(train_loader):
             idx, images, captions = batch
             images, captions = images.to(device), captions.to(device)
 
@@ -100,13 +112,10 @@ def train(encoder, decoder, criterion, optimizer, train_loader, val_loader, tota
 
             train_epoch_loss += loss.item()
 
-            if id % print_every == 0:
-                state = "Epoch: [{0:d}/{1:d}] || Step: [{2:d}/{3:d}] || Average Training Loss: {4:.4f}".format(epoch,
-                                                                                                             total_epoch,
-                                                                                                             id,
-                                                                                                             len(train_loader),
-                                                                                                             train_epoch_loss / (
-                                                                                                                       id + 1))
+            if i % print_every == 0:
+                state = "Epoch: {:15} || Step: {:15} || Average Training Loss: {:.4f}".format('[{:d}/{:d}]'.format(epoch,total_epoch),
+                                                                                              '[{:d}/{:d}]'.format(i,len(train_loader)),
+                                                                                               train_epoch_loss / (i + 1))
                 print(state)
                 file.write(state+ '\n')
                 file.flush()
@@ -118,20 +127,17 @@ def train(encoder, decoder, criterion, optimizer, train_loader, val_loader, tota
         encoder.eval()
         decoder.eval()
 
-        for id, batch in enumerate(val_loader):
+        for i, batch in enumerate(val_loader):
             idx, images, captions = batch
             images, captions = images.to(device), captions.to(device)
             features = encoder(images)
             outputs = decoder(features, captions)
             loss = criterion(outputs.view(-1, decoder.vocab_size), captions.contiguous().view(-1))
             val_epoch_loss += loss.item()
-            if id % print_every == 0:
-                state = "Epoch: [{0:d}/{1:d}] || Step: [{2:d}/{3:d}] || Average Validation Loss: {4:.4f}".format(epoch,
-                                                                                                               total_epoch,
-                                                                                                               id,
-                                                                                                               len(val_loader),
-                                                                                                               val_epoch_loss / (
-                                                                                                                       id + 1))
+            if i % print_every == 0:
+                state = "Epoch: {:15} || Step: {:15} || Average Validation Loss: {:.4f}".format('[{:d}/{:d}]'.format(epoch,total_epoch),
+                                                                                              '[{:d}/{:d}]'.format(i,len(val_loader)),
+                                                                                               val_epoch_loss / (i + 1))
                 print(state)
                 file.write(state+'\n')
                 file.flush()
@@ -165,6 +171,7 @@ def plot_loss(training_loss, validation_loss):
     plt.title('Training vs Validation loss')
     plt.xlabel('Epochs')
     plt.ylabel('Loss')
+    plt.grid(True)
     plt.show()
 
 
@@ -200,52 +207,6 @@ def predict(encoder, decoder, image, idx2word, word2idx, device):
     plt.show()
     # print(result.strip())
     return result.strip()
-
-
-def evaluate_bleu_score(encoder, decoder, loader, dataset, device):
-    encoder.to(device)
-    decoder.to(device)
-    encoder.eval()
-    decoder.eval()
-
-    b1_avg = 0
-    b2_avg = 0
-    b3_avg = 0
-    b4_avg = 0
-
-    for id, batch in enumerate(loader):
-        idx, image, caption = batch
-        image = image.to(device)
-        features = encoder(image).unsqueeze(1)
-        outputs = decoder.predict(features, dataset.vocab.word2idx, 20)
-        cap = [dataset.vocab.idx2word[word] for word in outputs]
-        cap = cap[1:-1]
-        result = ''
-        for word in cap:
-            result += word + ' '
-
-        result += '.'
-        hypo = result.strip()
-
-        references = dataset.get_captions(dataset.img_deque[idx[0]][0])
-
-        b1 = bleu_score.sentence_bleu(references, hypo, weights=(1.0, 0, 0, 0))
-        b2 = bleu_score.sentence_bleu(references, hypo, weights=(0.5, 0.5, 0, 0))
-        b3 = bleu_score.sentence_bleu(references, hypo, weights=(1.0 / 3.0, 1.0 / 3.0, 1.0 / 3.0, 0))
-        b4 = bleu_score.sentence_bleu(references, hypo, weights=(0.25, 0.25, 0.25, 0.25))
-
-        b1_avg += round(b1, 3)
-        b2_avg += round(b2, 3)
-        b3_avg += round(b3, 3)
-        b4_avg += round(b4, 3)
-
-    b1_avg = b1_avg / len(loader)
-    b2_avg = b2_avg / len(loader)
-    b3_avg = b3_avg / len(loader)
-    b4_avg = b4_avg / len(loader)
-
-    return b1_avg, b2_avg, b3_avg, b4_avg
-
 
 def plot_bleu_score_bar(b1_avg, b2_avg, b3_avg, b4_avg):
     x = np.array(["B1", "B2", "B3", "B4"])
@@ -333,3 +294,83 @@ def comparing_bleu_scores(bleu_scores):
     plt.title("Comparing Bleu scores of different models")
     plt.legend(loc="upper right")
     plt.show()
+
+def save_results(model_name: str,
+                 checkpoint: Union[str, Path],
+                 model_summary: str,
+                 train_loss: list,
+                 val_loss: list,
+                 bleu_score: list):
+    """Save results from each eval. 
+    
+    Bleu score takes a long time to calculate, so more efficient to do it and keep track or results in 
+    a json file.
+    
+    Reading the file later will give a dictionary with keys equal to model names, and values equal to 
+    results dictionary for thos models.
+    """
+    
+    results_fname = Path('../model/summary_results')/'result_summary.json'
+    
+    results = {'model_name': model_name,
+               'checkpoint': checkpoint,
+               'model_summary': model_summary,
+               'train_loss': train_loss,
+               'val_loss': val_loss,
+               'bleu_score': bleu_score
+              }
+    
+    if results_fname.exists(): # create file if it doesn't exist
+        # read file and add results dict. 
+        with open(results_fname, 'r') as f:
+            json_results = json.load(f)
+            
+        json_results[model_name] = results
+        
+    else:
+        # create new master results dict and add results dict
+        json_results = {model_name: results}
+        
+    with open(results_fname, 'w') as f:
+        json.dump(json_results, f)
+
+    
+    
+def evaluate_bleu_score(encoder, decoder, loader, dataset, device):
+    encoder.to(device)
+    decoder.to(device)
+    encoder.eval()
+    decoder.eval()
+
+    capt_refs = []
+    capt_hypos = []
+    
+    for i, batch in enumerate(loader):
+        idx, image, caption = batch
+        image = image.to(device)
+        features = encoder(image).unsqueeze(1)
+        outputs = decoder.predict(features, dataset.vocab.word2idx, 20)
+        cap = [dataset.vocab.idx2word[word] for word in outputs]
+        hypo = cap[1:-1]
+
+        references = dataset.get_captions(dataset.img_deque[idx[0]][0])
+        references = [ref.strip().lower().split() for ref in references]
+
+        capt_refs.append(references)
+        capt_hypos.append(hypo)
+
+    b1 = bleu_score.corpus_bleu(capt_refs, capt_hypos, 
+                                weights=(1.0, ))
+    b2 = bleu_score.corpus_bleu(capt_refs, capt_hypos, 
+                                weights=(0.5, 0.5))
+    b3 = bleu_score.corpus_bleu(capt_refs, capt_hypos, 
+                                weights=(1.0 / 3.0, 1.0 / 3.0, 1.0 / 3.0))
+    b4 = bleu_score.corpus_bleu(capt_refs, capt_hypos, 
+                                weights=(0.25, 0.25, 0.25, 0.25))
+
+    b1 = round(b1, 3)
+    b2 = round(b2, 3)
+    b3 = round(b3, 3)
+    b4 = round(b4, 3) 
+
+    return b1, b2, b3, b4
