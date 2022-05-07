@@ -17,6 +17,7 @@ class Encoder(nn.Module):
         :param pretrained (bool): if we want to load the pre-trained weight or not
         :param model_weight_path (sting): path to the pre-trained weight
         """
+        
         super(Encoder, self).__init__()
         # Load pretrained resnet152 on ImageNet
         if pretrained:
@@ -33,6 +34,24 @@ class Encoder(nn.Module):
         self.resnet.fc = nn.Linear(in_features=self.resnet.fc.in_features, out_features=1024)
 
         self.embed = nn.Linear(in_features=1024, out_features=embed_size)
+        ########### #
+#         if pretrained:
+#             resnet = models.resnet152(pretrained=True)
+#         else:
+#             resnet = models.resnet152(pretrained=False)
+#             resnet.load_state_dict(torch.load(model_weight_path))
+
+#         # Freeze the parameters of pre-trained model
+#         for param in resnet.parameters():
+#             param.requires_grad_(False)
+
+
+#         # replace the last fully connected layer output with embed_size
+#         modules = list(resnet.children())[:-1]
+#         self.resnet = nn.Sequential(*modules)
+#         self.embed = nn.Linear(resnet.fc.in_features, embed_size)        
+
+        ##############
 
     def forward(self, images):
         """Extract feature vectors from input images."""
