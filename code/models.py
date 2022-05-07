@@ -64,6 +64,7 @@ class Decoder(nn.Module):
         self.embed_size = embed_size
         self.hidden_size = hidden_size
         self.vocab_size = vocab_size
+        self.num_layers = num_layers
 
         self.lstm = nn.LSTM(input_size=embed_size,
                             hidden_size=hidden_size,

@@ -1,4 +1,6 @@
 import os.path
+from pathlib import Path
+from typing import Union
 
 import torch
 import torch.nn as nn
@@ -169,6 +171,7 @@ def plot_loss(training_loss, validation_loss):
     plt.title('Training vs Validation loss')
     plt.xlabel('Epochs')
     plt.ylabel('Loss')
+    plt.grid(True)
     plt.show()
 
 
@@ -217,7 +220,7 @@ def evaluate_bleu_score(encoder, decoder, loader, dataset, device):
     b3_avg = 0
     b4_avg = 0
 
-    for id, batch in enumerate(loader):
+    for batch in loader:
         idx, image, caption = batch
         image = image.to(device)
         features = encoder(image).unsqueeze(1)
@@ -337,3 +340,83 @@ def comparing_bleu_scores(bleu_scores):
     plt.title("Comparing Bleu scores of different models")
     plt.legend(loc="upper right")
     plt.show()
+
+def save_results(model_name: str,
+                 checkpoint: Union[str, Path],
+                 model_summary: str,
+                 train_loss: list,
+                 val_loss: list,
+                 bleu_score: list):
+    """Save results from each eval. 
+    
+    Bleu score takes a long time to calculate, so more efficient to do it and keep track or results in 
+    a json file.
+    
+    Reading the file later will give a dictionary with keys equal to model names, and values equal to 
+    results dictionary for thos models.
+    """
+    
+    results_fname = Path('../model/summary_results')/'result_summary.json'
+    
+    results = {'model_name': model_name,
+               'checkpoint': checkpoint,
+               'model_summary': model_summary,
+               'train_loss': train_loss,
+               'val_loss': val_loss,
+               'bleu_score': bleu_score
+              }
+    
+    if results_fname.exists(): # create file if it doesn't exist
+        # read file and add results dict. 
+        with open(results_fname, 'r') as f:
+            json_results = json.load(f)
+            
+        json_results[model_name] = results
+        
+    else:
+        # create new master results dict and add results dict
+        json_results = {model_name: results}
+        
+    with open(results_fname, 'w') as f:
+        json.dump(json_results, f)
+
+    
+    
+def evaluate_bleu_score2(encoder, decoder, loader, dataset, device):
+    encoder.to(device)
+    decoder.to(device)
+    encoder.eval()
+    decoder.eval()
+
+    capt_refs = []
+    capt_hypos = []
+    
+    for i, batch in enumerate(loader):
+        idx, image, caption = batch
+        image = image.to(device)
+        features = encoder(image).unsqueeze(1)
+        outputs = decoder.predict(features, dataset.vocab.word2idx, 20)
+        cap = [dataset.vocab.idx2word[word] for word in outputs]
+        hypo = cap[1:-1]
+
+        references = dataset.get_captions(dataset.img_deque[idx[0]][0])
+        references = [ref.strip().lower().split() for ref in references]
+
+        capt_refs.append(references)
+        capt_hypos.append(hypo)
+
+    b1 = bleu_score.corpus_bleu(capt_refs, capt_hypos, 
+                                weights=(1.0, ))
+    b2 = bleu_score.corpus_bleu(capt_refs, capt_hypos, 
+                                weights=(0.5, 0.5))
+    b3 = bleu_score.corpus_bleu(capt_refs, capt_hypos, 
+                                weights=(1.0 / 3.0, 1.0 / 3.0, 1.0 / 3.0))
+    b4 = bleu_score.corpus_bleu(capt_refs, capt_hypos, 
+                                weights=(0.25, 0.25, 0.25, 0.25))
+
+    b1 = round(b1, 3)
+    b2 = round(b2, 3)
+    b3 = round(b3, 3)
+    b4 = round(b4, 3) 
+
+    return b1, b2, b3, b4
