@@ -208,52 +208,6 @@ def predict(encoder, decoder, image, idx2word, word2idx, device):
     # print(result.strip())
     return result.strip()
 
-
-def evaluate_bleu_score(encoder, decoder, loader, dataset, device):
-    encoder.to(device)
-    decoder.to(device)
-    encoder.eval()
-    decoder.eval()
-
-    b1_avg = 0
-    b2_avg = 0
-    b3_avg = 0
-    b4_avg = 0
-
-    for batch in loader:
-        idx, image, caption = batch
-        image = image.to(device)
-        features = encoder(image).unsqueeze(1)
-        outputs = decoder.predict(features, dataset.vocab.word2idx, 20)
-        cap = [dataset.vocab.idx2word[word] for word in outputs]
-        cap = cap[1:-1]
-        result = ''
-        for word in cap:
-            result += word + ' '
-
-        result += '.'
-        hypo = result.strip()
-
-        references = dataset.get_captions(dataset.img_deque[idx[0]][0])
-
-        b1 = bleu_score.sentence_bleu(references, hypo, weights=(1.0, 0, 0, 0))
-        b2 = bleu_score.sentence_bleu(references, hypo, weights=(0.5, 0.5, 0, 0))
-        b3 = bleu_score.sentence_bleu(references, hypo, weights=(1.0 / 3.0, 1.0 / 3.0, 1.0 / 3.0, 0))
-        b4 = bleu_score.sentence_bleu(references, hypo, weights=(0.25, 0.25, 0.25, 0.25))
-
-        b1_avg += round(b1, 3)
-        b2_avg += round(b2, 3)
-        b3_avg += round(b3, 3)
-        b4_avg += round(b4, 3)
-
-    b1_avg = b1_avg / len(loader)
-    b2_avg = b2_avg / len(loader)
-    b3_avg = b3_avg / len(loader)
-    b4_avg = b4_avg / len(loader)
-
-    return b1_avg, b2_avg, b3_avg, b4_avg
-
-
 def plot_bleu_score_bar(b1_avg, b2_avg, b3_avg, b4_avg):
     x = np.array(["B1", "B2", "B3", "B4"])
     y = np.array([b1_avg, b2_avg, b3_avg, b4_avg])
@@ -382,7 +336,7 @@ def save_results(model_name: str,
 
     
     
-def evaluate_bleu_score2(encoder, decoder, loader, dataset, device):
+def evaluate_bleu_score(encoder, decoder, loader, dataset, device):
     encoder.to(device)
     decoder.to(device)
     encoder.eval()
