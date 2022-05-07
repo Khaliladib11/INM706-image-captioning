@@ -171,6 +171,7 @@ def plot_loss(training_loss, validation_loss):
     plt.title('Training vs Validation loss')
     plt.xlabel('Epochs')
     plt.ylabel('Loss')
+    plt.grid(True)
     plt.show()
 
 
