@@ -27,6 +27,11 @@ mdkir images
 mkdir annotations
 cd ../..
 mkdir model
+cd model
+wget https://download.pytorch.org/models/resnet152-394f9c45.pth
+mkdir summary_results
+cd ..
+mkdir vocabulary
 ```
 
 &nbsp;
